@@ -3,231 +3,125 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Customer Booking</title>
+<title>Mobile Mechanic Booking</title>
 <style>
-  body {
-    margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f2f7ff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-  }
-
-  .container {
-    background: #fff;
-    width: 95%;
-    max-width: 500px;
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 1.618rem; /* golden ratio spacing */
-  }
-
-  h2 {
-    text-align: center;
-    color: #0074D9;
-    margin-bottom: 1rem;
-  }
-
-  input, select, button {
-    width: 100%;
-    padding: 0.9rem 1rem;
-    font-size: 1rem;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-  }
-
-  input:focus, select:focus {
-    border-color: #0074D9;
-    outline: none;
-  }
-
-  button {
-    background-color: #0074D9;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.3s ease;
-    margin-top: 0.5rem;
-  }
-
-  button:hover {
-    background-color: #005fa3;
-  }
-
-  /* Ticket popup overlay */
-  #ticketOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right:0;
-    bottom:0;
-    background: rgba(0,0,0,0.5);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 999;
-  }
-
-  #ticket {
-    background: #fff;
-    padding: 2rem;
-    width: 90%;
-    max-width: 400px;
-    border-radius: 12px;
-    text-align: center;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-    position: relative;
-  }
-
-  #ticket h3 {
-    color: #0074D9;
-    margin-bottom: 1rem;
-    font-family:'Courier New', Courier, monospace;
-  }
-
-  #ticket p {
-    margin: 0.5rem 0;
-    font-size: 0.95rem;
-  }
-
-  #ticket img {
-    margin: 1rem 0;
-  }
-
-  #closeTicket {
-    position: absolute;
-    top: 10px;
-    right: 12px;
-    font-weight: bold;
-    cursor: pointer;
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-  }
-
-  .ticket-section {
-    border: 2px dashed #0074D9;
-    padding: 1.5rem;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .ticket-row {
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-  }
-
+  body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f5f5f5; display:flex; flex-direction:column; align-items:center; }
+  header { width:100%; background:#0055aa; color:white; padding:1em; text-align:center; font-size:1.5em; }
+  form { background:white; padding:2em; margin-top:2em; border-radius:1em; width:90%; max-width:500px; display:flex; flex-direction:column; gap:1em; }
+  input, select, button { padding:0.8em; font-size:1em; border-radius:0.5em; border:1px solid #ccc; width:100%; box-sizing:border-box; }
+  button { background:#0055aa; color:white; border:none; cursor:pointer; }
+  button:hover { background:#003377; }
+  #bookingMessage { margin-top:1em; font-weight:bold; }
+  footer { margin-top:2em; font-weight:bold; }
+  #ticketPopup { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:2em; border-radius:1em; box-shadow:0 0 20px rgba(0,0,0,0.3); width:90%; max-width:400px; text-align:center; }
+  #ticketPopup button { margin-top:1em; }
 </style>
 </head>
 <body>
+<header>Mobile Mechanic Booking</header>
 
-<div class="container">
-  <h2>Book Your Service</h2>
-  <input type="text" id="name" placeholder="Full Name" required>
+<form id="bookingForm" onsubmit="event.preventDefault(); submitBooking();">
+  <input type="text" id="name" placeholder="Name" required>
   <input type="email" id="email" placeholder="Email" required>
-  <input type="tel" id="phone" placeholder="Phone" required>
-  <input type="text" id="vehicle" placeholder="Vehicle Registration" required>
+  <input type="text" id="phone" placeholder="Phone" required>
+  <input type="text" id="vehicle" placeholder="Vehicle Registration" required oninput="formatPlate(this)">
   <select id="service" required>
     <option value="">Select Service</option>
     <option value="Oil Change">Oil Change</option>
-    <option value="Brake Check">Brake Check</option>
-    <option value="Battery Replacement">Battery Replacement</option>
-    <option value="Tire Replacement">Tire Replacement</option>
+    <option value="Brake Repair">Brake Repair</option>
     <option value="Full Service">Full Service</option>
-    <option value="AC Service">AC Service</option>
-    <option value="Wheel Alignment">Wheel Alignment</option>
+    <option value="Battery Replacement">Battery Replacement</option>
+    <option value="Tyre Change">Tyre Change</option>
   </select>
-  <input type="text" id="location" placeholder="Your Location" readonly required>
-  <button type="button" onclick="getLocation()">Detect Location</button>
-  <button type="button" onclick="submitBooking()">Book Service</button>
-</div>
+  <input type="text" id="location" placeholder="Location" required>
+  <button type="submit">Book Service</button>
+</form>
+
+<div id="bookingMessage"></div>
+<footer id="dbStatus">Checking database...</footer>
 
 <!-- Ticket Popup -->
-<div id="ticketOverlay">
-  <div id="ticket">
-    <button id="closeTicket" onclick="closeTicket()">×</button>
-    <div class="ticket-section">
-      <h3>SOS Mechanics Boarding Pass</h3>
-      <div class="ticket-row"><span>Customer:</span> <span id="ticketCustomer"></span></div>
-      <div class="ticket-row"><span>Vehicle:</span> <span id="ticketVehicle"></span></div>
-      <div class="ticket-row"><span>Service:</span> <span id="ticketService"></span></div>
-      <div class="ticket-row"><span>Location:</span> <span id="ticketLocation"></span></div>
-      <div style="text-align:center;">
-        <img id="ticketQR" src="" alt="QR Code" width="150" height="150">
-      </div>
-      <p style="text-align:center; font-size:0.85rem; color:#555;">Take a screenshot or download for your reference.</p>
-    </div>
-  </div>
+<div id="ticketPopup">
+  <h2>Booking Ticket</h2>
+  <p id="ticketName"></p>
+  <p id="ticketVehicle"></p>
+  <p id="ticketService"></p>
+  <p id="ticketLocation"></p>
+  <canvas id="qrCodeCanvas"></canvas>
+  <button onclick="closeTicket()">Close</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <script>
-async function getLocation() {
-  if (!navigator.geolocation) return alert('Geolocation not supported!');
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-    const data = await res.json();
-    document.getElementById('location').value = data.display_name;
-    alert('Location detected: ' + data.display_name);
-  }, (err) => alert('Error getting location: ' + err.message));
-}
-
-async function submitBooking() {
-  const bookingData = {
-    name: document.getElementById('name').value,
-    email: document.getElementById('email').value,
-    phone: document.getElementById('phone').value,
-    vehicle: document.getElementById('vehicle').value.toUpperCase(),
-    service: document.getElementById('service').value,
-    location: document.getElementById('location').value
-  };
-
-  if (!bookingData.name || !bookingData.email || !bookingData.phone || !bookingData.vehicle || !bookingData.service || !bookingData.location) {
-    return alert('Fill all fields!');
-  }
-
-  try {
-    const res = await fetch('https://sos911.onrender.com/bookings', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(bookingData)
-    });
-
-    const json = await res.json();
-    if (json.booking) {
-      showTicket(json.booking);
-    } else {
-      alert('Booking failed!');
+// --- DB Status ---
+async function checkDbStatus() {
+    try {
+        const res = await fetch('https://sos911.onrender.com/status');
+        const json = await res.json();
+        if (json.status === 'ok') document.getElementById('dbStatus').innerText = '✅ Database connected. Bookings working.';
+        else document.getElementById('dbStatus').innerText = '❌ Database not connected.';
+    } catch(err) {
+        document.getElementById('dbStatus').innerText = '❌ Database not connected. Error: ' + err.message;
     }
-  } catch(err) {
-    alert('Error: ' + err.message);
-  }
+}
+checkDbStatus();
+
+// --- Vehicle Plate ---
+function formatPlate(input) {
+    let value = input.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(value.length>4) value=value.slice(0,value.length-3)+' '+value.slice(-3);
+    input.value=value;
+}
+function validatePlate(plate){
+    const regex=/^[A-Z]{2}[0-9]{2} [A-Z]{3}$/;
+    return regex.test(plate);
 }
 
-function showTicket(booking) {
-  document.getElementById('ticketCustomer').innerText = booking.name;
-  document.getElementById('ticketVehicle').innerText = booking.vehicle;
-  document.getElementById('ticketService').innerText = booking.service;
-  document.getElementById('ticketLocation').innerText = booking.location;
-  document.getElementById('ticketQR').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${booking.qr_code}`;
-  document.getElementById('ticketOverlay').style.display = 'flex';
+// --- Booking Submission ---
+async function submitBooking() {
+    const bookingData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        vehicle: document.getElementById('vehicle').value,
+        service: document.getElementById('service').value,
+        location: document.getElementById('location').value
+    };
+    const msgDiv = document.getElementById('bookingMessage');
+    msgDiv.style.color='red';
+
+    if (!bookingData.name || !bookingData.email || !bookingData.phone || !bookingData.vehicle || !bookingData.service || !bookingData.location) {
+        msgDiv.innerText='❌ All fields are required.'; return;
+    }
+    if(!validatePlate(bookingData.vehicle)) { msgDiv.innerText='❌ Invalid UK vehicle registration. Format AB12 CDE.'; return; }
+
+    try {
+        const res=await fetch('https://sos911.onrender.com/bookings',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify(bookingData)
+        });
+        const json=await res.json();
+        if(json.error){ msgDiv.innerText='❌ Booking failed: '+json.error; }
+        else if(json.booking){ 
+            msgDiv.style.color='green';
+            msgDiv.innerText='✅ Booking successful!';
+            showTicket(json.booking);
+        } else { msgDiv.innerText='❌ Booking failed. No booking returned.'; }
+    } catch(err){ msgDiv.innerText='❌ Booking failed. '+err.message; }
 }
 
-function closeTicket() {
-  document.getElementById('ticketOverlay').style.display = 'none';
+// --- Ticket Popup ---
+function showTicket(booking){
+    document.getElementById('ticketName').innerText='Name: '+booking.name;
+    document.getElementById('ticketVehicle').innerText='Vehicle: '+booking.vehicle;
+    document.getElementById('ticketService').innerText='Service: '+booking.service;
+    document.getElementById('ticketLocation').innerText='Location: '+booking.location;
+    const canvas=document.getElementById('qrCodeCanvas');
+    QRCode.toCanvas(canvas, booking.qr_code, {width:200});
+    document.getElementById('ticketPopup').style.display='block';
 }
+function closeTicket(){ document.getElementById('ticketPopup').style.display='none'; }
 </script>
-
 </body>
 </html>
