@@ -3,153 +3,122 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOS Mechanics - Customer Booking</title>
+<title>Customer Booking</title>
 <style>
   body {
     font-family: Arial, sans-serif;
-    background: #ffffff;
-    margin: 0;
-    padding: 0;
+    background: #f5f5f5;
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    justify-content: center;
+    padding: 2rem;
   }
-  header {
-    width: 100%;
-    background: #0057b7;
-    color: white;
-    padding: 1.618rem 0; /* golden ratio spacing */
-    text-align: center;
-    font-size: 2rem;
-  }
-  main {
-    max-width: 600px;
+  .booking-form {
+    background: #fff;
+    padding: 2rem;
     width: 90%;
-    margin: 2rem auto;
+    max-width: 500px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
-    gap: 1.618rem;
+    gap: 1.618rem; /* golden ratio spacing */
   }
   input, select, button {
-    padding: 0.618rem 1rem; /* golden ratio */
+    padding: 0.8rem 1rem;
     font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid #ccc;
     width: 100%;
     box-sizing: border-box;
   }
   button {
-    background: #0057b7;
+    background: #0074D9;
     color: white;
+    font-weight: bold;
     border: none;
     cursor: pointer;
-    font-weight: bold;
+    transition: background 0.3s ease;
   }
   button:hover {
-    background: #004096;
+    background: #005fa3;
   }
-  .confirmation {
-    background: #f0f8ff;
-    padding: 1.618rem;
-    border-radius: 0.618rem;
-    text-align: center;
+  #ticket {
+    margin-top: 2rem;
+    padding: 1rem;
+    border: 2px solid #0074D9;
+    border-radius: 8px;
+    background: #e6f0ff;
     display: none;
-    flex-direction: column;
-    gap: 0.618rem;
-  }
-  .qr-code {
-    font-weight: bold;
-    font-size: 1.2rem;
-    color: #333;
   }
 </style>
 </head>
 <body>
-
-<header>SOS Mechanics - Book a Service</header>
-
-<main>
-  <form id="bookingForm">
-    <input type="text" id="customer_name" placeholder="Your Name" required>
-    <input type="text" id="vehicle_reg" placeholder="Vehicle Registration" required>
-    <select id="service_name" required>
+  <form class="booking-form" id="bookingForm">
+    <input type="text" id="name" placeholder="Full Name" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="tel" id="phone" placeholder="Phone" required>
+    <input type="text" id="vehicle" placeholder="Vehicle Registration (AB12CDE)" required>
+    <select id="service" required>
       <option value="">Select Service</option>
-      <option value="Oil Change">Oil Change</option>
-      <option value="Brake Check">Brake Check</option>
-      <option value="Battery Replacement">Battery Replacement</option>
-      <option value="Tire Replacement">Tire Replacement</option>
-      <option value="Full Service">Full Service</option>
+      <option value="1">Oil Change</option>
+      <option value="2">Brake Check</option>
+      <option value="3">Battery Replacement</option>
+      <option value="4">Tire Replacement</option>
+      <option value="5">Full Service</option>
+      <option value="6">AC Service</option>
+      <option value="7">Wheel Alignment</option>
     </select>
-    <input type="text" id="location" placeholder="Your Location" required>
+    <input type="text" id="location" placeholder="Your Location" readonly required>
+    <button type="button" onclick="getLocation()">Detect Location</button>
     <button type="submit">Book Service</button>
   </form>
 
-  <div class="confirmation" id="confirmation">
-    <p>✅ Booking Confirmed!</p>
-    <p>Your QR code: <span class="qr-code" id="qrCode"></span></p>
-    <p>Show this QR code to the mechanic.</p>
-  </div>
-</main>
+  <div id="ticket"></div>
 
-<script>
-const form = document.getElementById('bookingForm');
-const confirmation = document.getElementById('confirmation');
-const qrCodeEl = document.getElementById('qrCode');
-const locationInput = document.getElementById('location');
+  <script>
+    async function getLocation() {
+      if (!navigator.geolocation) return alert('Geolocation not supported!');
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
 
-// Auto-detect location
-if(navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
-
-    // Free reverse geocode via OpenStreetMap Nominatim
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-    const data = await res.json();
-    locationInput.value = data.display_name || '';
-  }, (err) => {
-    console.warn('Location access denied:', err);
-  });
-}
-
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  const booking = {
-    customer_name: document.getElementById('customer_name').value.trim(),
-    vehicle_reg: formatReg(document.getElementById('vehicle_reg').value.trim()),
-    service_name: document.getElementById('service_name').value,
-    location: document.getElementById('location').value.trim()
-  };
-
-  try {
-    const res = await fetch('/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(booking)
-    });
-    const data = await res.json();
-    if(data.qr_code) {
-      qrCodeEl.textContent = data.qr_code;
-      confirmation.style.display = 'flex';
-      form.reset();
-    } else {
-      alert('Booking failed');
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        document.getElementById('location').value = data.display_name;
+      }, (err) => alert('Error getting location: ' + err.message));
     }
-  } catch(err) {
-    console.error(err);
-    alert('Error connecting to server');
-  }
-});
 
-// Format vehicle registration in uppercase with space
-function formatReg(reg) {
-  reg = reg.toUpperCase().replace(/\s+/g,'');
-  // UK style: 2-2-3 pattern (example: AB12 CDE)
-  if(reg.length === 7) {
-    return reg.slice(0,2)+' '+reg.slice(2,4)+' '+reg.slice(4);
-  }
-  return reg;
-}
-</script>
+    const form = document.getElementById('bookingForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        customer_id: 1, // replace with real customer id
+        vehicle_reg: document.getElementById('vehicle').value.toUpperCase(),
+        service_id: document.getElementById('service').value,
+        location: document.getElementById('location').value
+      };
+      const res = await fetch('https://sos911.onrender.com/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (json.booking) showTicket(json.booking);
+      else alert('Booking failed!');
+    });
 
+    function showTicket(booking) {
+      const ticket = document.getElementById('ticket');
+      ticket.innerHTML = `
+        <h3>Booking Ticket</h3>
+        <p>Customer ID: ${booking.customer_id}</p>
+        <p>Vehicle: ${booking.vehicle_reg}</p>
+        <p>Service ID: ${booking.service_id}</p>
+        <p>Location: ${booking.location}</p>
+        <p>QR: ${booking.qr_code}</p>
+      `;
+      ticket.style.display = 'block';
+    }
+  </script>
 </body>
 </html>
