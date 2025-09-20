@@ -5,136 +5,213 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
 <style>
-  :root {
-    --golden: 1.618;
-    --primary: #007BFF;
-    --white: #ffffff;
-    --spacing: 16px;
-  }
   body {
     font-family: Arial, sans-serif;
-    background: var(--white);
-    color: #333;
-    margin: var(--spacing);
+    margin:0;
+    padding:0;
+    background: #f5f5f5;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
   }
-  h1 { margin-bottom: calc(var(--spacing) * var(--golden)); }
-  form { display: flex; flex-direction: column; max-width: 480px; margin: auto; gap: calc(var(--spacing) * var(--golden)); }
-  input, select, button { padding: var(--spacing); font-size: 1rem; border: 1px solid #ccc; border-radius: 6px; }
-  button { background: var(--primary); color: white; border: none; cursor: pointer; }
-  button:disabled { background: #aaa; cursor: not-allowed; }
-  #dbStatus { margin-top: var(--spacing); text-align: center; font-weight: bold; }
-  #ticketPopup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background:white; border: 2px solid #333; padding: calc(var(--spacing) * var(--golden)); z-index:100; max-width: 90%; box-shadow:0 0 10px rgba(0,0,0,0.2);}
-  #ticketPopup pre { white-space: pre-wrap; font-family: monospace; }
+  .container {
+    width: 90%;
+    max-width: 700px;
+    margin-top: 40px;
+    padding: 2rem;
+    background: white;
+    border-radius: 1rem;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+  }
+  h1 {
+    text-align:center;
+    margin-bottom:2rem;
+    font-size:2rem;
+  }
+  label {
+    display:block;
+    margin-top:1rem;
+    font-weight:bold;
+  }
+  input, select {
+    width:100%;
+    padding:0.6rem;
+    margin-top:0.3rem;
+    border-radius:0.5rem;
+    border:1px solid #ccc;
+    font-size:1rem;
+    box-sizing:border-box;
+  }
+  button {
+    margin-top:2rem;
+    padding:0.8rem;
+    width:100%;
+    font-size:1.2rem;
+    background:#0077cc;
+    color:white;
+    border:none;
+    border-radius:0.6rem;
+    cursor:pointer;
+  }
+  button:hover {
+    background:#005fa3;
+  }
+  footer {
+    text-align:center;
+    margin-top:1rem;
+    font-size:0.9rem;
+    color:#555;
+  }
+  .popup {
+    display:none;
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:white;
+    padding:2rem;
+    border-radius:1rem;
+    box-shadow:0 0 15px rgba(0,0,0,0.3);
+    z-index:1000;
+  }
+  .popup img {
+    max-width:100%;
+  }
+  .close-popup {
+    margin-top:1rem;
+    padding:0.5rem;
+    background:#0077cc;
+    color:white;
+    border:none;
+    cursor:pointer;
+    border-radius:0.5rem;
+    width:100%;
+  }
 </style>
 </head>
 <body>
 
-<h1>Book Your Mobile Mechanic</h1>
-<form id="bookingForm">
-  <input type="text" id="name" name="name" placeholder="Full Name" required>
-  <input type="email" id="email" name="email" placeholder="Email" required>
-  <input type="text" id="phone" name="phone" placeholder="Phone (+44XXXXXXXXXX or 0XXXXXXXXXX)" required>
-  <input type="text" id="vehicle" name="vehicle" placeholder="Vehicle Number Plate (UK)" required>
-  <select id="service" name="service" required>
-    <option value="">Select Service</option>
-    <option>Oil Change</option>
-    <option>Brake Repair</option>
-    <option>Full Service</option>
-    <option>Battery Replacement</option>
-    <option>Tyre Change</option>
-  </select>
-  <input type="text" id="location" name="location" placeholder="Your Location" readonly required>
-  <button type="submit" id="submitBtn" disabled>Book Now</button>
-</form>
+<div class="container">
+  <h1>Book Your Mobile Mechanic</h1>
+  <form id="bookingForm">
+    <label for="name">Full Name</label>
+    <input type="text" id="name" required>
 
-<div id="dbStatus">Checking DB...</div>
+    <label for="email">Email</label>
+    <input type="email" id="email" required>
 
-<div id="ticketPopup">
-  <h2>Booking Ticket</h2>
-  <pre id="ticketContent"></pre>
-  <button onclick="closeTicket()">Close</button>
+    <label for="phone">Phone</label>
+    <input type="tel" id="phone" required>
+
+    <label for="vehicle">Vehicle Number Plate</label>
+    <input type="text" id="vehicle" placeholder="AB12 CDE" required>
+
+    <label for="service">Service</label>
+    <select id="service" required>
+      <option value="">Select a Service</option>
+    </select>
+
+    <label for="location">Location</label>
+    <input type="text" id="location" readonly required>
+
+    <button type="submit">Book Now</button>
+  </form>
 </div>
 
+<div class="popup" id="ticketPopup">
+  <h2>Your Booking Ticket</h2>
+  <img id="qrImage" src="" alt="QR Code">
+  <button class="close-popup" onclick="closePopup()">Close</button>
+</div>
+
+<footer id="dbStatus">Checking database...</footer>
+
 <script>
-const poolStatusEl = document.getElementById('dbStatus');
-const submitBtn = document.getElementById('submitBtn');
-const locationInput = document.getElementById('location');
+// --- Backend URL ---
+const backendURL = 'https://sos911.onrender.com';
 
-const ukPhoneRegex = /^(?:0|\+44)\d{10}$/;
-const ukPlateRegex = /^[A-Z]{2}\d{2}\s?[A-Z]{3}$/i;
-
-// Check backend DB connection
-async function checkDb() {
-  try {
-    const res = await fetch('https://sos911.onrender.com/status');
-    const json = await res.json();
-    if(json.status === 'ok'){
-      poolStatusEl.innerText = '✅ Database connected. Bookings working.';
-    } else {
-      poolStatusEl.innerText = '❌ Database not connected';
-    }
-  } catch(err){
-    poolStatusEl.innerText = '❌ Database not connected';
+// --- Populate services ---
+async function loadServices() {
+  const res = await fetch(`${backendURL}/services`);
+  if (res.ok) {
+    const data = await res.json();
+    const select = document.getElementById('service');
+    data.services.forEach(s => {
+      const option = document.createElement('option');
+      option.value = s.name;
+      option.textContent = `${s.name} (£${s.price})`;
+      select.appendChild(option);
+    });
   }
 }
-checkDb();
+loadServices();
 
-// Auto-location
-navigator.geolocation.getCurrentPosition(async pos => {
-  const { latitude, longitude } = pos.coords;
-  const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
-  const data = await resp.json();
-  locationInput.value = data.display_name;
-  submitBtn.disabled = false;
-}, err => {
-  locationInput.value = 'Unable to get location';
-  submitBtn.disabled = true;
-});
+// --- Geolocation ---
+navigator.geolocation.getCurrentPosition(
+  async (pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+      const data = await res.json();
+      document.getElementById('location').value = data.display_name || `${lat},${lon}`;
+    } catch {
+      document.getElementById('location').value = `${lat},${lon}`;
+    }
+  },
+  (err) => { console.error(err); }
+);
 
-// Booking submission
-document.getElementById('bookingForm').addEventListener('submit', async e=>{
+// --- Number plate validation ---
+function formatNumberPlate(value) {
+  return value.toUpperCase().replace(/\s+/g,'').replace(/^([A-Z]{2})(\d{2})([A-Z]{3})$/,'$1$2 $3');
+}
+
+// --- Booking form ---
+document.getElementById('bookingForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const name = document.getElementById('name').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const phone = document.getElementById('phone').value.trim();
-  let vehicle = document.getElementById('vehicle').value.trim().toUpperCase().replace(/\s?/,' ');
-  const service = document.getElementById('service').value;
-  const location = locationInput.value;
+  const vehicle = formatNumberPlate(document.getElementById('vehicle').value);
+  const payload = {
+    name: document.getElementById('name').value,
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    vehicle,
+    service: document.getElementById('service').value,
+    location: document.getElementById('location').value
+  };
 
-  if(!name || !email || !phone || !vehicle || !service || !location){
-    return alert('All fields are required');
-  }
-  if(!ukPhoneRegex.test(phone)) return alert('Invalid UK phone number');
-  if(!ukPlateRegex.test(vehicle)) return alert('Invalid UK number plate');
-
-  try{
-    const res = await fetch('https://sos911.onrender.com/bookings', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({name,email,phone,vehicle,service,location})
-    });
-    const json = await res.json();
-    if(json.error) return alert('Booking failed: '+json.error);
-    
-    // Show ticket popup
-    document.getElementById('ticketContent').innerText = `
-Booking ID: ${json.booking.id}
-Customer: ${json.booking.customer_id}
-Service: ${service}
-Vehicle: ${vehicle}
-Location: ${location}
-QR: ${json.booking.qr_code}
-Date: ${new Date(json.booking.created_at).toLocaleString()}
-`;
+  const res = await fetch(`${backendURL}/bookings`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (data.error) {
+    alert('Booking failed: '+data.error);
+  } else {
+    // Show QR popup
+    document.getElementById('qrImage').src = data.booking.qr_code;
     document.getElementById('ticketPopup').style.display = 'block';
-  } catch(err){
-    alert('Booking failed: '+err.message);
   }
 });
 
-function closeTicket(){
+// --- Popup ---
+function closePopup() {
   document.getElementById('ticketPopup').style.display = 'none';
 }
+
+// --- Database status ---
+async function checkDB() {
+  try {
+    const res = await fetch(`${backendURL}/status`);
+    const data = await res.json();
+    document.getElementById('dbStatus').textContent = data.status === 'ok' ? '✅ Database connected' : '❌ Database not connected';
+  } catch {
+    document.getElementById('dbStatus').textContent = '❌ Database not connected';
+  }
+}
+checkDB();
 </script>
+
 </body>
 </html>
