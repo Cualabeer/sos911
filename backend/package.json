@@ -1,6 +1,7 @@
 {
   "name": "sos-mechanics-backend",
   "version": "1.0.0",
+  "description": "Backend for SOS Mechanics mobile mechanic system",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -10,6 +11,10 @@
     "pg": "^8.11.1",
     "jsonwebtoken": "^9.0.0",
     "cors": "^2.8.5",
-    "body-parser": "^1.20.2"
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
