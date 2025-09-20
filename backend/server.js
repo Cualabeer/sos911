@@ -1,183 +1,91 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import pkg from "pg";
-
+import express from 'express';
+import bodyParser from 'body-parser';
+import pg from 'pg';
+import dotenv from 'dotenv';
 dotenv.config();
-const { Pool } = pkg;
-
-// Use Render's DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-// ✅ Init DB: create tables + insert dummy data if missing
+// PostgreSQL connection
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false } // required on Render
+});
+
+// Initialize tables
 async function initDb() {
-  const client = await pool.connect();
   try {
-    console.log("⏳ Setting up database...");
-
-    // Customers
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS customers (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100),
-        email VARCHAR(100) UNIQUE,
-        phone VARCHAR(20)
-      );
-    `);
-
-    // Mechanics
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS mechanics (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100),
-        specialization VARCHAR(100)
-      );
-    `);
-
-    // Services
-    await client.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS services (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(100),
-        description TEXT,
-        price NUMERIC
-      );
+        name VARCHAR(50),
+        price DECIMAL(6,2)
+      )
     `);
 
-    // Bookings
-    await client.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS bookings (
         id SERIAL PRIMARY KEY,
-        customer_id INT REFERENCES customers(id) ON DELETE CASCADE,
-        service_id INT REFERENCES services(id) ON DELETE CASCADE,
-        mechanic_id INT REFERENCES mechanics(id) ON DELETE SET NULL,
-        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        customer_name VARCHAR(100),
+        phone VARCHAR(20),
+        vehicle_reg VARCHAR(10),
+        service_id INT REFERENCES services(id),
         location TEXT,
-        status VARCHAR(50) DEFAULT 'pending'
-      );
+        lat DECIMAL(10,8),
+        lng DECIMAL(11,8),
+        accuracy DECIMAL(6,2),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
     `);
 
-    // Insert dummy services (only if empty)
-    const { rows: serviceCount } = await client.query(`SELECT COUNT(*) FROM services`);
-    if (parseInt(serviceCount[0].count) === 0) {
-      await client.query(`
-        INSERT INTO services (name, description, price) VALUES
-        ('Oil Change', 'Engine oil & filter replacement', 79.99),
-        ('Brake Service', 'Pads, discs check and replacement', 149.99),
-        ('Battery Replacement', 'Remove old, fit new battery', 120.00),
-        ('Diagnostic Check', 'Full OBD diagnostic scan', 59.99),
-        ('Full Service', 'Comprehensive yearly service', 249.99);
+    // Seed some services if empty
+    const { rows } = await pool.query("SELECT COUNT(*) FROM services");
+    if (parseInt(rows[0].count) === 0) {
+      await pool.query(`
+        INSERT INTO services (name, price) VALUES
+        ('Oil Change', 45.00),
+        ('Brake Pads', 80.00),
+        ('Battery Replacement', 120.00),
+        ('Diagnostics', 50.00),
+        ('Tyre Change', 70.00)
       `);
     }
 
-    // Insert dummy customers (only if empty)
-    const { rows: custCount } = await client.query(`SELECT COUNT(*) FROM customers`);
-    if (parseInt(custCount[0].count) === 0) {
-      await client.query(`
-        INSERT INTO customers (name, email, phone) VALUES
-        ('Ali Khan', 'ali@example.com', '03001234567'),
-        ('Sophie Brown', 'sophie@example.com', '07123456789'),
-        ('Carlos Diaz', 'carlos@example.com', '07222333444');
-      `);
-    }
-
-    // Insert dummy mechanics
-    const { rows: mechCount } = await client.query(`SELECT COUNT(*) FROM mechanics`);
-    if (parseInt(mechCount[0].count) === 0) {
-      await client.query(`
-        INSERT INTO mechanics (name, specialization) VALUES
-        ('John Mechanic', 'Brakes'),
-        ('Sara Fixit', 'Diagnostics'),
-        ('Mohammed Tools', 'General Service');
-      `);
-    }
-
-    // Insert dummy bookings
-    const { rows: bookingCount } = await client.query(`SELECT COUNT(*) FROM bookings`);
-    if (parseInt(bookingCount[0].count) === 0) {
-      await client.query(`
-        INSERT INTO bookings (customer_id, service_id, mechanic_id, location, status) VALUES
-        (1, 1, 1, 'London', 'completed'),
-        (1, 2, 2, 'London', 'pending'),
-        (2, 3, 1, 'Manchester', 'in-progress'),
-        (3, 4, 3, 'Birmingham', 'pending'),
-        (2, 5, 2, 'Leeds', 'completed'),
-        (1, 3, 2, 'Glasgow', 'pending'),
-        (3, 2, 1, 'Bradford', 'in-progress'),
-        (2, 1, 3, 'Liverpool', 'completed'),
-        (1, 4, 1, 'London', 'pending'),
-        (3, 5, 2, 'Nottingham', 'pending');
-      `);
-    }
-
-    console.log("✅ Database setup complete");
+    console.log("✅ Database initialized");
   } catch (err) {
     console.error("❌ Database init error:", err);
-  } finally {
-    client.release();
   }
 }
-initDb();
 
-// ✅ Routes
-
-// Health check
-app.get("/", (req, res) => {
-  res.json({ message: "✅ Backend is running and DB connected!" });
-});
-
-// Get all services
-app.get("/services", async (req, res) => {
+// Routes
+app.get('/services', async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM services");
+    const { rows } = await pool.query("SELECT * FROM services ORDER BY id");
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Failed to fetch services" });
   }
 });
 
-// Get all bookings
-app.get("/bookings", async (req, res) => {
+app.post('/bookings', async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT b.id, c.name AS customer, s.name AS service, m.name AS mechanic, b.date, b.location, b.status
-      FROM bookings b
-      LEFT JOIN customers c ON b.customer_id = c.id
-      LEFT JOIN services s ON b.service_id = s.id
-      LEFT JOIN mechanics m ON b.mechanic_id = m.id
-      ORDER BY b.date DESC
-    `);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Add new booking
-app.post("/bookings", async (req, res) => {
-  const { customer_id, service_id, mechanic_id, location } = req.body;
-  try {
+    const { customer_name, phone, vehicle_reg, service_id, location, lat, lng, accuracy, notes } = req.body;
     const result = await pool.query(
-      `INSERT INTO bookings (customer_id, service_id, mechanic_id, location, status)
-       VALUES ($1, $2, $3, $4, 'pending')
-       RETURNING *`,
-      [customer_id, service_id, mechanic_id, location]
+      `INSERT INTO bookings (customer_name, phone, vehicle_reg, service_id, location, lat, lng, accuracy, notes)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [customer_name, phone, vehicle_reg, service_id, location, lat, lng, accuracy, notes]
     );
-    res.json(result.rows[0]);
+    res.json({ success: true, booking: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Booking insert error:", err);
+    res.status(500).json({ success: false, error: "Could not create booking" });
   }
 });
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-}); 
+initDb().then(() => {
+  app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+});
