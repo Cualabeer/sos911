@@ -3,31 +3,17 @@ const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { Pool } = require('pg');
-const path = require('path');
 require('dotenv').config();
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 
 const JWT_SECRET = process.env.JWT_SECRET;
-
-// --- Serve frontend from repo-root/frontend ---
-app.use(express.static(path.join(__dirname, '../frontend')));
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
-});
-
-// Catch-all to serve frontend
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
-});
 
 // --- Role-based middleware ---
 function auth(role) {
@@ -179,4 +165,4 @@ app.get('/job/:id/ticket', auth(), async (req,res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
