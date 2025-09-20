@@ -2,169 +2,197 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Customer Booking</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<title>SOS Mechanics - Book a Service</title>
 <style>
-body { font-family: Arial; margin: 20px; }
-h2 { color: #333; }
-form { max-width: 500px; margin: auto; }
-label { display: block; margin-top: 10px; }
-input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; }
-button { margin-top: 15px; padding: 10px; background: #0077cc; color: white; border: none; cursor: pointer; }
-button:hover { background: #005fa3; }
-.status { margin-top: 15px; padding: 10px; border-radius: 4px; }
-.success { background: #d4edda; color: #155724; }
-.error { background: #f8d7da; color: #721c24; }
-#map { height: 300px; margin-top: 10px; }
-.suggestions { border: 1px solid #ccc; max-height: 120px; overflow-y: auto; background: white; position: absolute; width: calc(100% - 20px); z-index: 1000; }
-.suggestion { padding: 8px; cursor: pointer; }
-.suggestion:hover { background: #f0f0f0; }
+  body {
+    font-family: Arial, sans-serif;
+    background: #ffffff;
+    margin: 0;
+    padding: 0;
+  }
+  header {
+    background: #007BFF;
+    color: white;
+    text-align: center;
+    padding: 1rem;
+    font-size: 1.5rem;
+  }
+  main {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 1rem;
+    background: #f9f9f9;
+    border-radius: 10px;
+  }
+  label {
+    display: block;
+    margin-top: 1rem;
+    font-weight: bold;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 0.7rem;
+    margin-top: 0.3rem;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+  button {
+    background: #007BFF;
+    color: white;
+    border: none;
+    padding: 1rem;
+    margin-top: 1.5rem;
+    width: 100%;
+    font-size: 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #0056b3;
+  }
+  .status {
+    margin-top: 1rem;
+    padding: 0.8rem;
+    border-radius: 5px;
+  }
+  .status.success {
+    background: #d4edda;
+    color: #155724;
+  }
+  .status.error {
+    background: #f8d7da;
+    color: #721c24;
+  }
+  #map {
+    width: 100%;
+    height: 200px;
+    margin-top: 1rem;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+  }
 </style>
 </head>
 <body>
+<header>
+  SOS Mechanics - Book a Service
+</header>
+<main>
+  <form id="bookingForm">
+    <label for="customer_name">Full Name</label>
+    <input type="text" id="customer_name" name="customer_name" required>
 
-<h2>Book Your Mobile Mechanic</h2>
-<form id="bookingForm">
-  <label>Name:</label>
-  <input type="text" name="customer_name" required>
+    <label for="phone">Phone Number</label>
+    <input type="tel" id="phone" name="phone" required pattern="[0-9]{10,15}" placeholder="07123456789">
 
-  <label>Phone:</label>
-  <input type="tel" name="phone" required pattern="[0-9]{10,15}">
+    <label for="vehicle_reg">Vehicle Registration</label>
+    <input type="text" id="vehicle_reg" name="vehicle_reg" required placeholder="AB12 CDE" maxlength="8">
 
-  <label>Vehicle Reg:</label>
-  <input type="text" name="vehicle_reg" required maxlength="10">
+    <label for="service">Select Service</label>
+    <select id="service" name="service" required>
+      <option value="">Loading services...</option>
+    </select>
 
-  <label>Service:</label>
-  <select name="service_id" required>
-    <option value="">-- Select Service --</option>
-  </select>
+    <label>Location</label>
+    <div id="map">Loading map...</div>
 
-  <label>Location:</label>
-  <input type="text" name="location" id="locationInput" required placeholder="Detecting your location...">
-  <div id="suggestions" class="suggestions"></div>
-  <div id="map"></div>
+    <label for="notes">Additional Notes</label>
+    <textarea id="notes" name="notes" rows="3" placeholder="Any special instructions"></textarea>
 
-  <input type="hidden" name="lat" id="lat">
-  <input type="hidden" name="lng" id="lng">
-  <input type="hidden" name="accuracy" id="accuracy">
-
-  <label>Notes (optional):</label>
-  <textarea name="notes"></textarea>
-
-  <button type="submit">Book Now</button>
-</form>
-
-<div id="status"></div>
+    <button type="submit">Book Now</button>
+    <div id="status" class="status"></div>
+  </form>
+</main>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
 <script>
 const statusDiv = document.getElementById('status');
-const locationInput = document.getElementById('locationInput');
-const suggestionsDiv = document.getElementById('suggestions');
-const latInput = document.getElementById('lat');
-const lngInput = document.getElementById('lng');
-const accInput = document.getElementById('accuracy');
-const serviceSelect = document.querySelector("select[name='service_id']");
+const serviceSelect = document.getElementById('service');
+const vehicleInput = document.getElementById('vehicle_reg');
+const mapDiv = document.getElementById('map');
 
-// Load services from backend
-fetch("https://sos911.onrender.com/services")
-  .then(res => res.json())
-  .then(services => {
-    services.forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s.id;
-      opt.textContent = `${s.name} (£${s.price})`;
-      serviceSelect.appendChild(opt);
-    });
-  });
+let lat = 0, lng = 0, accuracy = 0;
 
-// Force vehicle reg uppercase
-document.querySelector("input[name='vehicle_reg']").addEventListener("input", e => {
+// Vehicle reg auto uppercase
+vehicleInput.addEventListener('input', e => {
   e.target.value = e.target.value.toUpperCase();
 });
 
-// Map init
-let map, marker, accuracyCircle;
-function initMap(lat, lng, accuracy) {
-  map = L.map('map').setView([lat, lng], 16);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  marker = L.marker([lat, lng], { draggable: true }).addTo(map);
-  latInput.value = lat;
-  lngInput.value = lng;
-  accInput.value = accuracy;
-  if (accuracy) accuracyCircle = L.circle([lat, lng], { radius: accuracy, color:'blue', opacity:0.2 }).addTo(map);
-  marker.on('dragend', e => {
-    const pos = marker.getLatLng();
-    latInput.value = pos.lat;
-    lngInput.value = pos.lng;
-    if (accuracyCircle) accuracyCircle.setLatLng(pos);
+// Load services
+fetch('/services')
+  .then(res => res.json())
+  .then(data => {
+    serviceSelect.innerHTML = '<option value="">Select Service</option>';
+    data.forEach(s => {
+      serviceSelect.innerHTML += `<option value="${s.id}">${s.name} - £${s.price}</option>`;
+    });
   });
-}
 
-// GPS + reverse geocode
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(async pos => {
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-    const acc = pos.coords.accuracy;
-    latInput.value = lat;
-    lngInput.value = lng;
-    accInput.value = acc;
+// Map setup
+const map = L.map('map');
+let marker;
 
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-      const data = await res.json();
-      locationInput.value = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    } catch(err){ console.error(err); }
-
-    initMap(lat, lng, acc);
-  }, err => {
-    console.warn("Location denied", err);
-    initMap(51.3865, 0.5225, 0); // Medway default
-    locationInput.placeholder = "Enter address manually";
-  });
-}
-
-// Autocomplete
-locationInput.addEventListener("input", async () => {
-  const query = locationInput.value.trim();
-  if(query.length<3){ suggestionsDiv.innerHTML=""; return; }
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`);
-    const data = await res.json();
-    suggestionsDiv.innerHTML = data.map(place => `<div class="suggestion" data-lat="${place.lat}" data-lon="${place.lon}">${place.display_name}</div>`).join("");
-  } catch(err){ console.error(err); }
-});
-suggestionsDiv.addEventListener("click", e=>{
-  if(e.target.classList.contains("suggestion")){
-    locationInput.value=e.target.textContent;
-    latInput.value=e.target.dataset.lat;
-    lngInput.value=e.target.dataset.lon;
-    suggestionsDiv.innerHTML="";
-    if(marker) marker.setLatLng([e.target.dataset.lat, e.target.dataset.lon]);
-    if(accuracyCircle) accuracyCircle.setLatLng([e.target.dataset.lat, e.target.dataset.lon]);
+function updateMarker(lat, lng) {
+  if (!marker) {
+    marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+    marker.on('dragend', e => {
+      const pos = e.target.getLatLng();
+      lat = pos.lat;
+      lng = pos.lng;
+    });
+  } else {
+    marker.setLatLng([lat, lng]);
   }
-});
+  map.setView([lat, lng], 15);
+}
 
-// Form submit
-document.getElementById('bookingForm').addEventListener('submit', async e=>{
+// Auto-locate
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(pos => {
+    lat = pos.coords.latitude;
+    lng = pos.coords.longitude;
+    accuracy = pos.coords.accuracy;
+    updateMarker(lat, lng);
+  }, () => {
+    map.setView([51.389, 0.523], 13); // fallback to Medway center
+  });
+} else {
+  map.setView([51.389, 0.523], 13);
+}
+
+// Submit booking
+document.getElementById('bookingForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const formData = Object.fromEntries(new FormData(e.target));
-  try{
-    const res = await fetch("https://sos911.onrender.com/bookings", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
+  const formData = {
+    customer_name: document.getElementById('customer_name').value,
+    phone: document.getElementById('phone').value,
+    vehicle_reg: document.getElementById('vehicle_reg').value,
+    service_id: document.getElementById('service').value,
+    location: `Lat:${lat}, Lng:${lng}`,
+    lat, lng, accuracy,
+    notes: document.getElementById('notes').value
+  };
+
+  try {
+    const res = await fetch('/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
       body: JSON.stringify(formData)
     });
-    const result = await res.json();
-    if(!result.success) throw new Error("Booking failed");
-    statusDiv.className="status success";
-    statusDiv.textContent=`✅ Booking confirmed! Ref: ${result.booking.id}`;
-    e.target.reset();
-  } catch(err){
-    statusDiv.className="status error";
-    statusDiv.textContent="❌ Booking failed, try again.";
+    const data = await res.json();
+    if (data.success) {
+      statusDiv.className = 'status success';
+      statusDiv.textContent = '✅ Booking successful!';
+      e.target.reset();
+    } else {
+      throw new Error(data.error || 'Booking failed');
+    }
+  } catch(err) {
+    statusDiv.className = 'status error';
+    statusDiv.textContent = '❌ Booking failed, try again.';
     console.error(err);
   }
 });
