@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOS Mechanics Master Dashboard</title>
+<style>
+body { margin:0; font-family: Arial, sans-serif; background:#f5f5f5; color:#333;}
+header { background:#004080; color:#fff; padding:1em; text-align:center;}
+button { padding:0.5em 1em; margin:0.5em; cursor:pointer; border:none; border-radius:5px; background:#004080; color:#fff; font-weight:bold;}
+main { display:flex; flex-direction:column; align-items:center; padding:1em;}
+section { width:61.8%; margin:1em 0; padding:1em; background:#fff; border-radius:10px; display:none; }
+#summaryPanel { display:flex; justify-content:space-around; background:#e0f0ff; }
+input, select { padding:0.5em; margin:0.5em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SOS Mechanics Master Dashboard</h1>
+  <button onclick="showCustomer()">Customer</button>
+  <button onclick="showMechanic()">Mechanic</button>
+  <button onclick="showAdmin()">Admin</button>
+</header>
+
+<main>
+  <!-- Customer Section -->
+  <section id="customerSection">
+    <h2>Customer Booking</h2>
+    <input type="text" id="vehiclePlate" placeholder="Vehicle Plate">
+    <input type="datetime-local" id="bookingDateTime">
+    <select id="serviceType">
+      <option value="oil">Oil Service</option>
+      <option value="brakes">Brake Service</option>
+      <option value="tyres">Tyre Service</option>
+      <option value="diagnostic">Diagnostic</option>
+    </select>
+    <button onclick="bookJob()">Book Job</button>
+    <div id="customerBookings"></div>
+  </section>
+
+  <!-- Mechanic Section -->
+  <section id="mechanicSection">
+    <h2>Mechanic Dashboard</h2>
+    <button onclick="startJob()">Start Job (Scan QR)</button>
+    <button onclick="completeJob()">Complete Job</button>
+    <div id="mechanicJobs"></div>
+  </section>
+
+  <!-- Admin Section -->
+  <section id="adminSection">
+    <h2>Admin Control Tower</h2>
+    <div id="summaryPanel">
+      <div>Total Jobs: <span id="totalJobs">0</span></div>
+      <div>Total Revenue: £<span id="totalRevenue">0</span></div>
+      <div>Total Parts: £<span id="totalParts">0</span></div>
+      <div>Total Labor: £<span id="totalLabor">0</span></div>
+      <div>Avg Duration: <span id="avgDuration">0</span>s</div>
+    </div>
+    <div id="airspace" style="width:100%;height:400px; border:2px solid #004080; background:#d0e8ff; margin-top:1em; position:relative;"></div>
+  </section>
+</main>
+
+<script>
+let jobsData = [
+  {id:1,vehicle_plate:'ABC123',mechanic:'John',status:'pending',duration:0,created_at: new Date()},
+  {id:2,vehicle_plate:'XYZ789',mechanic:'Mike',status:'inprogress',duration:0,created_at: new Date()}
+];
+
+function showCustomer(){
+  document.getElementById('customerSection').style.display='block';
+  document.getElementById('mechanicSection').style.display='none';
+  document.getElementById('adminSection').style.display='none';
+  renderCustomerBookings();
+}
+
+function showMechanic(){
+  document.getElementById('customerSection').style.display='none';
+  document.getElementById('mechanicSection').style.display='block';
+  document.getElementById('adminSection').style.display='none';
+  renderMechanicJobs();
+}
+
+function showAdmin(){
+  document.getElementById('customerSection').style.display='none';
+  document.getElementById('mechanicSection').style.display='none';
+  document.getElementById('adminSection').style.display='block';
+  renderAdminSummary();
+  renderAirspace();
+}
+
+// Customer Functions
+function renderCustomerBookings(){
+  const container = document.getElementById('customerBookings');
+  const customerJobs = jobsData.filter(j=>!j.mechanic); // no mechanic assigned = new booking
+  container.innerHTML = customerJobs.map(j=>`<div>Job ${j.id} | ${j.vehicle_plate} | ${j.status}</div>`).join('');
+}
+
+function bookJob(){
+  const plate = document.getElementById('vehiclePlate').value.toUpperCase();
+  const datetime = document.getElementById('bookingDateTime').value;
+  const service = document.getElementById('serviceType').value;
+  if(!plate || !datetime) return alert('Enter all fields');
+  const newJob = {id:jobsData.length+1, vehicle_plate:plate, status:'pending', service, created_at:new Date(datetime)};
+  jobsData.push(newJob);
+  renderCustomerBookings();
+  alert(`Job booked for ${plate} at ${datetime}`);
+}
+
+// Mechanic Functions
+function renderMechanicJobs(){
+  const container = document.getElementById('mechanicJobs');
+  container.innerHTML = jobsData.map(j=>`<div>${j.id} | ${j.vehicle_plate} | ${j.status}</div>`).join('');
+}
+
+function startJob(){ alert('Scan QR to start job'); }
+function completeJob(){ alert('Mark job complete and update backend'); }
+
+// Admin Functions
+function renderAdminSummary(){
+  const totalJobs = jobsData.length;
+  const totalRevenue = jobsData.reduce((sum,j)=>100 + sum,0);
+  const totalParts = jobsData.reduce((sum,j)=>50 + sum,0);
+  const totalLabor = jobsData.reduce((sum,j)=>50 + sum,0);
+  const avgDuration = 3600;
+  document.getElementById('totalJobs').innerText = totalJobs;
+  document.getElementById('totalRevenue').innerText = totalRevenue;
+  document.getElementById('totalParts').innerText = totalParts;
+  document.getElementById('totalLabor').innerText = totalLabor;
+  document.getElementById('avgDuration').innerText = avgDuration;
+}
+
+function renderAirspace(){
+  const airspace = document.getElementById('airspace');
+  airspace.innerHTML='';
+  jobsData.forEach((job,i)=>{
+    const plane = document.createElement('div');
+    plane.className='plane';
+    plane.innerText='✈';
+    plane.title=`Job ${job.id} - ${job.vehicle_plate} - ${job.status}`;
+    plane.style.position='absolute';
+    plane.style.left=(i*50)+'px';
+    plane.style.top=(i*50)+'px';
+    plane.style.background = job.status==='completed' ? 'green' : job.status==='inprogress' ? 'yellow':'red';
+    plane.style.width='30px';
+    plane.style.height='30px';
+    plane.style.borderRadius='50%';
+    plane.style.display='flex';
+    plane.style.alignItems='center';
+    plane.style.justifyContent='center';
+    plane.style.color='#fff';
+    airspace.appendChild(plane);
+  });
+}
+
+// Default to Customer view
+showCustomer();
+</script>
+</body>
+</html>
