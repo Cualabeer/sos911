@@ -1,188 +1,120 @@
 const express = require('express');
-const { Client } = require('pg');
-const cors = require('cors');
-const dotenv = require('dotenv');
-dotenv.config();
+const { Pool } = require('pg');
+const path = require('path');
 
 const app = express();
 app.use(express.json());
-app.use(cors());
-app.use(express.static('public')); // serve frontend if needed
+app.use(express.static(path.join(__dirname, 'frontend')));
 
-// PostgreSQL client with SSL for Render
-const client = new Client({
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Initialize DB and create tables
-async function initDB() {
-  await client.connect();
-  console.log('Connected to PostgreSQL with SSL');
-
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS customers (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(100),
-      email VARCHAR(100) UNIQUE,
-      phone VARCHAR(20) UNIQUE,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS mechanics (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(100),
-      phone VARCHAR(20) UNIQUE,
-      email VARCHAR(100) UNIQUE,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS services (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(50),
-      description TEXT,
-      base_price NUMERIC(10,2)
-    );
-    CREATE TABLE IF NOT EXISTS bookings (
-      id SERIAL PRIMARY KEY,
-      customer_id INT REFERENCES customers(id),
-      mechanic_id INT REFERENCES mechanics(id),
-      vehicle_plate VARCHAR(10),
-      service_id INT REFERENCES services(id),
-      booking_datetime TIMESTAMP,
-      status VARCHAR(20) DEFAULT 'pending',
-      address TEXT,
-      lat NUMERIC(10,6),
-      lng NUMERIC(10,6),
-      total_cost NUMERIC(10,2),
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS job_parts (
-      id SERIAL PRIMARY KEY,
-      booking_id INT REFERENCES bookings(id),
-      part_name VARCHAR(100),
-      part_cost NUMERIC(10,2) DEFAULT 0,
-      quantity INT DEFAULT 1
-    );
-    CREATE TABLE IF NOT EXISTS loyalty (
-      id SERIAL PRIMARY KEY,
-      customer_id INT REFERENCES customers(id),
-      service_count INT DEFAULT 0,
-      next_free_service BOOLEAN DEFAULT FALSE
-    );
-  `);
-
-  // Insert dummy data if empty
-  const res = await client.query('SELECT COUNT(*) FROM customers');
-  if (parseInt(res.rows[0].count) === 0) {
-    await client.query(`
-      INSERT INTO customers (name,email,phone) VALUES 
-      ('Alice Smith','alice@example.com','+447400000001'),
-      ('Bob Johnson','bob@example.com','+447400000002'),
-      ('Charlie Lee','charlie@example.com','+447400000003');
-
-      INSERT INTO mechanics (name,phone,email) VALUES 
-      ('Dave Mechanic','+447401111111','dave@sosmechanics.co.uk'),
-      ('Eva Fixit','+447401111112','eva@sosmechanics.co.uk');
-
-      INSERT INTO services (name,description,base_price) VALUES
-      ('Oil Service','Full engine oil change',75.00),
-      ('Brake Service','Brake pads and discs check/change',120.00),
-      ('Tyre Service','Tyre rotation and balancing',50.00),
-      ('Diagnostic','Full vehicle diagnostic check',65.00),
-      ('Battery Replacement','Replace old battery',85.00),
-      ('AC Service','Air conditioning inspection & refill',70.00),
-      ('Full Service','Complete vehicle service including fluids',180.00);
+// Initialize database
+async function initDb() {
+  try {
+    // Services table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS services (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        base_price NUMERIC(10,2) NOT NULL
+      );
     `);
-    console.log('Inserted dummy data');
+
+    // Add 5 services if table is empty
+    const servicesCount = await pool.query('SELECT COUNT(*) FROM services');
+    if (parseInt(servicesCount.rows[0].count) === 0) {
+      await pool.query(`
+        INSERT INTO services (name, base_price) VALUES
+        ('Oil Change', 45.00),
+        ('Brake Check', 60.00),
+        ('Battery Replacement', 80.00),
+        ('Tyre Replacement', 100.00),
+        ('Full Service', 150.00);
+      `);
+    }
+
+    // Bookings table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        vehicle_plate VARCHAR(20) NOT NULL,
+        service_id INT REFERENCES services(id),
+        address TEXT NOT NULL,
+        lat NUMERIC(10,6),
+        lng NUMERIC(10,6),
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Dummy bookings per service
+    const bookingsCount = await pool.query('SELECT COUNT(*) FROM bookings');
+    if (parseInt(bookingsCount.rows[0].count) === 0) {
+      const dummyBookings = [
+        ['John Doe','john@example.com','07123456789','AB12 CDE',1,'10 Downing St, London',51.503,-0.127],
+        ['Jane Smith','jane@example.com','07234567890','CD34 EFG',2,'221B Baker St, London',51.523,-0.158],
+        ['Mike Johnson','mike@example.com','07345678901','EF56 HIJ',3,'1 Oxford St, London',51.515,-0.141],
+        ['Sara Lee','sara@example.com','07456789012','GH78 KLM',4,'Tower Bridge, London',51.505,-0.075],
+        ['Tom Brown','tom@example.com','07567890123','IJ90 NOP',5,'London Eye, London',51.503,-0.119]
+      ];
+      for (const b of dummyBookings) {
+        await pool.query(
+          `INSERT INTO bookings (name,email,phone,vehicle_plate,service_id,address,lat,lng)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          b
+        );
+      }
+    }
+
+    console.log('Database initialized');
+  } catch(err) {
+    console.error('DB Init Error:', err);
   }
 }
 
-initDB().catch(console.error);
+// Routes
 
-// ----------------- API ENDPOINTS -----------------
-
-// Root
-app.get('/', (req,res)=>res.send('Mobile Mechanic Backend Ready'));
-
-// Customer booking
-app.post('/book', async (req,res)=>{
+// Get all services
+app.get('/services', async (req,res)=>{
   try {
-    const {name,email,phone,vehicle_plate,lat,lng,address,service_id} = req.body;
-
-    // Add customer if not exists
-    let cust = await client.query('SELECT * FROM customers WHERE email=$1', [email]);
-    let customer_id;
-    if(cust.rows.length===0){
-      const result = await client.query(
-        'INSERT INTO customers (name,email,phone) VALUES ($1,$2,$3) RETURNING id',
-        [name,email,phone]
-      );
-      customer_id = result.rows[0].id;
-    } else {
-      customer_id = cust.rows[0].id;
-    }
-
-    const result = await client.query(
-      'INSERT INTO bookings (customer_id,vehicle_plate,lat,lng,address,service_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
-      [customer_id,vehicle_plate.toUpperCase().replace(/\s+/,' '),lat,lng,address,service_id]
-    );
-
-    res.json({booking_id: result.rows[0].id});
-  } catch(e){
-    console.error(e);
-    res.status(500).json({error:e.message});
+    const result = await pool.query('SELECT id, name, base_price FROM services ORDER BY id ASC');
+    res.json(result.rows);
+  } catch(err){
+    console.error(err);
+    res.status(500).json({error:'Failed to load services'});
   }
 });
 
-// Mechanic start job
-app.post('/mechanic/start-job', async (req,res)=>{
+// Book a service
+app.post('/book', async (req,res)=>{
+  const { name,email,phone,vehicle_plate,service_id,address,lat,lng } = req.body;
   try {
-    const {booking_id, mechanic_id} = req.body;
-    await client.query('UPDATE bookings SET mechanic_id=$1, status=$2 WHERE id=$3',
-      [mechanic_id,'in-progress',booking_id]);
-    res.json({success:true});
-  } catch(e){ console.error(e); res.status(500).json({error:e.message}); }
+    const result = await pool.query(
+      `INSERT INTO bookings (name,email,phone,vehicle_plate,service_id,address,lat,lng)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [name,email,phone,vehicle_plate,service_id,address,lat,lng]
+    );
+    res.json({booking_id: result.rows[0].id});
+  } catch(err){
+    console.error(err);
+    res.status(500).json({error:'Booking failed'});
+  }
 });
 
-// Mechanic complete job
-app.post('/mechanic/complete-job', async (req,res)=>{
-  try {
-    const {booking_id, parts=[], labor=0} = req.body;
-    let totalParts = parts.reduce((sum,p)=>sum + p.part_cost*p.quantity,0) + labor;
-
-    await client.query('UPDATE bookings SET status=$1, total_cost=$2 WHERE id=$3',
-      ['completed',totalParts,booking_id]);
-
-    for(const p of parts){
-      await client.query('INSERT INTO job_parts (booking_id, part_name, part_cost, quantity) VALUES ($1,$2,$3,$4)',
-        [booking_id,p.part_name,p.part_cost,p.quantity]);
-    }
-
-    res.json({success:true});
-  } catch(e){ console.error(e); res.status(500).json({error:e.message}); }
-});
-
-// Loyalty check
-app.get('/loyalty/:customer_id', async (req,res)=>{
-  try {
-    const {customer_id} = req.params;
-    const r = await client.query('SELECT * FROM loyalty WHERE customer_id=$1', [customer_id]);
-    res.json(r.rows[0]||{service_count:0,next_free_service:false});
-  } catch(e){ console.error(e); res.status(500).json({error:e.message}); }
-});
-
-// Get all bookings
-app.get('/bookings', async (req,res)=>{
-  try {
-    const r = await client.query(`
-      SELECT b.*, c.name as customer_name, s.name as service_name
-      FROM bookings b
-      JOIN customers c ON c.id=b.customer_id
-      JOIN services s ON s.id=b.service_id
-    `);
-    res.json(r.rows);
-  } catch(e){ console.error(e); res.status(500).json({error:e.message}); }
+// Serve frontend
+app.get('/', (req,res)=>{
+  res.sendFile(path.join(__dirname,'frontend','index.html'));
 });
 
 // Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=>console.log('Server running on port', PORT));
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, async ()=>{
+  await initDb();
+  console.log(`Server running on port ${PORT}`);
+});
