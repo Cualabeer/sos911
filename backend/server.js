@@ -1,165 +1,196 @@
-// server.js
 import express from 'express';
 import bodyParser from 'body-parser';
 import { Pool } from 'pg';
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 app.use(bodyParser.json());
 
+// ES modules __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
+
+// PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Generate unique QR code
+// QR code generator
 function generateQR() {
-  return crypto.randomBytes(8).toString('hex'); // 16-char code
+  return crypto.randomBytes(8).toString('hex');
 }
 
-// Initialize database and ensure qr_code column exists
-async function initDb() {
+// Reset database and populate dummy data
+async function resetDatabase() {
   try {
-    // Create bookings table if it doesn't exist
+    console.log('Resetting database...');
+
+    // Drop tables
+    await pool.query(`DROP TABLE IF EXISTS loyalty;`);
+    await pool.query(`DROP TABLE IF EXISTS bookings;`);
+    await pool.query(`DROP TABLE IF EXISTS services;`);
+    await pool.query(`DROP TABLE IF EXISTS customers;`);
+
+    // Create tables
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS bookings (
+      CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
-        customer_name TEXT,
-        vehicle_reg TEXT,
-        service_name TEXT,
-        location TEXT,
-        status TEXT DEFAULT 'pending',
-        start_time TIMESTAMP,
-        end_time TIMESTAMP,
-        parts TEXT,
-        labor NUMERIC
-      )
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE,
+        phone VARCHAR(20),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
     `);
 
-    // Check if qr_code column exists
-    const colRes = await pool.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name='bookings' AND column_name='qr_code'
+    await pool.query(`
+      CREATE TABLE services (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        price NUMERIC(8,2) NOT NULL
+      );
     `);
-    if (colRes.rows.length === 0) {
-      await pool.query(`ALTER TABLE bookings ADD COLUMN qr_code TEXT UNIQUE`);
-      console.log('qr_code column added to bookings table.');
+
+    await pool.query(`
+      CREATE TABLE bookings (
+        id SERIAL PRIMARY KEY,
+        customer_id INT REFERENCES customers(id),
+        vehicle_reg VARCHAR(10) NOT NULL,
+        service_id INT REFERENCES services(id),
+        location TEXT NOT NULL,
+        qr_code VARCHAR(20) UNIQUE,
+        status VARCHAR(20) DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE loyalty (
+        id SERIAL PRIMARY KEY,
+        customer_id INT REFERENCES customers(id),
+        points INT DEFAULT 0,
+        free_services INT DEFAULT 0
+      );
+    `);
+
+    console.log('Tables created.');
+
+    // Insert dummy services
+    const servicesData = [
+      { name: 'Oil Change', price: 50 },
+      { name: 'Brake Check', price: 70 },
+      { name: 'Battery Replacement', price: 120 },
+      { name: 'Tire Replacement', price: 90 },
+      { name: 'Full Service', price: 200 },
+      { name: 'AC Service', price: 60 },
+      { name: 'Wheel Alignment', price: 80 }
+    ];
+    for (let s of servicesData) {
+      await pool.query(`INSERT INTO services (name, price) VALUES ($1, $2)`, [s.name, s.price]);
     }
 
-    // Add dummy data if table empty
-    const res = await pool.query('SELECT COUNT(*) FROM bookings');
-    if (parseInt(res.rows[0].count) === 0) {
-      console.log('Adding dummy bookings...');
-      for (let i = 1; i <= 10; i++) {
-        await pool.query(
-          `INSERT INTO bookings (customer_name, vehicle_reg, service_name, location)
-           VALUES ($1,$2,$3,$4)`,
-          [`Customer ${i}`, `AB12CDE${i}`, `Service ${i % 5 + 1}`, `Address ${i}`]
-        );
-      }
+    // Insert dummy customers
+    const customersData = [
+      { name: 'Alice', email: 'alice@test.com', phone: '07405937101' },
+      { name: 'Bob', email: 'bob@test.com', phone: '07405937102' },
+      { name: 'Charlie', email: 'charlie@test.com', phone: '07405937103' }
+    ];
+    for (let c of customersData) {
+      await pool.query(`INSERT INTO customers (name, email, phone) VALUES ($1,$2,$3)`, [c.name, c.email, c.phone]);
     }
 
-    console.log('Database initialized.');
+    // Insert dummy bookings with QR codes
+    const dummyBookings = [
+      { customer_id:1, vehicle_reg:'AB12CDE', service_id:1, location:'Medway, UK' },
+      { customer_id:2, vehicle_reg:'CD34EFG', service_id:2, location:'Medway, UK' },
+      { customer_id:3, vehicle_reg:'EF56HIJ', service_id:3, location:'Medway, UK' },
+      { customer_id:1, vehicle_reg:'GH78JKL', service_id:4, location:'Medway, UK' },
+      { customer_id:2, vehicle_reg:'IJ90KLM', service_id:5, location:'Medway, UK' }
+    ];
+    for (let b of dummyBookings) {
+      await pool.query(
+        `INSERT INTO bookings (customer_id, vehicle_reg, service_id, location, qr_code)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [b.customer_id, b.vehicle_reg.toUpperCase(), b.service_id, b.location, generateQR()]
+      );
+    }
+
+    // Insert dummy loyalty
+    for (let c of customersData) {
+      await pool.query(
+        `INSERT INTO loyalty (customer_id, points, free_services)
+         VALUES ((SELECT id FROM customers WHERE email=$1), $2, $3)`,
+        [c.email, Math.floor(Math.random() * 20), 0]
+      );
+    }
+
+    console.log('Dummy data inserted.');
   } catch (err) {
     console.error('Database init error:', err);
   }
 }
 
-// Initialize QR codes for all bookings without one
-async function initQRCodes() {
-  try {
-    const res = await pool.query(`SELECT id FROM bookings WHERE qr_code IS NULL`);
-    for (const row of res.rows) {
-      const qrCode = generateQR();
-      await pool.query(`UPDATE bookings SET qr_code=$1 WHERE id=$2`, [qrCode, row.id]);
-      console.log(`Booking ${row.id} QR code set: ${qrCode}`);
-    }
-    console.log('All missing QR codes initialized.');
-  } catch (err) {
-    console.error('Error initializing QR codes:', err);
-  }
-}
-
-// Customer creates booking
+// Customer booking endpoint
 app.post('/bookings', async (req, res) => {
-  const { customer_name, vehicle_reg, service_name, location } = req.body;
-  const qr_code = generateQR();
   try {
+    const { customer_id, vehicle_reg, service_id, location } = req.body;
+    if (!customer_id || !vehicle_reg || !service_id || !location) {
+      return res.status(400).json({ error: 'Missing fields' });
+    }
+    const qr_code = generateQR();
     const result = await pool.query(
-      `INSERT INTO bookings (customer_name, vehicle_reg, service_name, location, qr_code)
+      `INSERT INTO bookings (customer_id, vehicle_reg, service_id, location, qr_code)
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [customer_name, vehicle_reg.toUpperCase(), service_name, location, qr_code]
+      [customer_id, vehicle_reg.toUpperCase(), service_id, location, qr_code]
     );
-    res.json(result.rows[0]);
+    res.json({ booking: result.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to create booking' });
+    res.status(500).json({ error: 'Booking failed' });
   }
 });
 
-// Mechanic endpoints
-app.get('/bookings', async (req, res) => {
+// Summary endpoint
+app.get('/summary', async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT id, customer_name, vehicle_reg, service_name, location, status, start_time, end_time, qr_code
-      FROM bookings
-      ORDER BY id DESC
+    const customers = await pool.query(`SELECT * FROM customers ORDER BY id`);
+    const services = await pool.query(`SELECT * FROM services ORDER BY id`);
+    const bookings = await pool.query(`
+      SELECT b.id, c.name AS customer_name, b.vehicle_reg, s.name AS service_name, b.location, b.qr_code, b.status, b.created_at
+      FROM bookings b
+      JOIN customers c ON b.customer_id = c.id
+      JOIN services s ON b.service_id = s.id
+      ORDER BY b.id
     `);
-    res.json(result.rows);
+    const loyalty = await pool.query(`
+      SELECT l.id, c.name AS customer_name, l.points, l.free_services
+      FROM loyalty l
+      JOIN customers c ON l.customer_id = c.id
+      ORDER BY l.id
+    `);
+
+    res.json({
+      customers: customers.rows,
+      services: services.rows,
+      bookings: bookings.rows,
+      loyalty: loyalty.rows
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch bookings' });
+    console.error('Error fetching summary:', err);
+    res.status(500).json({ error: 'Failed to fetch summary' });
   }
 });
 
-app.post('/bookings/:id/start', async (req, res) => {
-  const jobId = req.params.id;
-  try {
-    await pool.query(`UPDATE bookings SET status='in-progress', start_time=NOW() WHERE id=$1`, [jobId]);
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
-  }
-});
-
-app.post('/bookings/:id/complete', async (req, res) => {
-  const jobId = req.params.id;
-  const { parts, labor } = req.body;
-  try {
-    await pool.query(
-      `UPDATE bookings SET status='completed', end_time=NOW(), parts=$1, labor=$2 WHERE id=$3`,
-      [parts || 'N/A', labor || 0, jobId]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
-  }
-});
-
-app.post('/bookings/:id/override', async (req, res) => {
-  const jobId = req.params.id;
-  const { code } = req.body;
-  if(!code) return res.status(400).json({ success:false, error:"Missing override code" });
-  try {
-    await pool.query(
-      `UPDATE bookings SET status='in-progress', start_time=NOW() WHERE id=$1`,
-      [jobId]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success:false });
-  }
-});
-
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
-  await initDb();      // Create table + dummy data if empty
-  await initQRCodes(); // Generate QR codes for existing bookings
-  console.log('✅ Backend is running and DB connected!');
-});
+// Initialize everything
+(async () => {
+  await resetDatabase();
+  app.listen(3000, () => console.log('🚀 Backend running on port 3000 and DB connected'));
+})();
