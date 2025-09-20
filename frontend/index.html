@@ -5,51 +5,80 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Book Mobile Mechanic</title>
 <style>
-  body {
+  html, body {
+    height: 100%;
+    margin: 0;
     font-family: Arial, sans-serif;
     background-color: #f5f7fa;
-    margin: 0;
-    padding: 0;
   }
+
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+
   header {
     background: #0077cc;
     color: white;
     text-align: center;
     padding: 1rem;
+    flex: 0 0 auto;
   }
+
   main {
-    max-width: 700px;
-    margin: 2rem auto;
-    padding: 2rem;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
+
+  form {
+    width: 90%;
+    max-width: 600px;
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* consistent spacing */
+    box-sizing: border-box;
+    height: calc(100% - 4rem - 60px); /* header + footer accounted for */
+  }
+
   input, select, textarea, button {
-    display: block;
-    width: 100%;
     padding: 0.8rem;
-    margin: 1rem 0;
     font-size: 1rem;
     border-radius: 5px;
     border: 1px solid #ccc;
+    width: 100%;
     box-sizing: border-box;
   }
+
+  textarea {
+    resize: none;
+    height: 80px;
+  }
+
   button {
     background: #0077cc;
     color: white;
     border: none;
     cursor: pointer;
   }
+
   button:hover {
     background: #005fa3;
   }
+
   footer {
+    flex: 0 0 auto;
+    background: #f1f1f1;
     text-align: center;
     padding: 1rem;
     font-size: 0.9rem;
-    background: #f1f1f1;
   }
+
   #ticket-popup {
     display: none;
     position: fixed;
@@ -63,9 +92,11 @@
     box-shadow: 0 0 20px rgba(0,0,0,0.2);
     z-index: 1000;
   }
+
   #ticket-popup.show {
     display: block;
   }
+
 </style>
 </head>
 <body>
@@ -133,7 +164,7 @@ document.getElementById('booking-form').addEventListener('submit', async (e) => 
     if(k === 'number_plate') payload[k] = v.toUpperCase(); // UK plate capitalization
     else payload[k] = v;
   });
-  
+
   try {
     const res = await fetch('/api/book', {
       method: 'POST',
