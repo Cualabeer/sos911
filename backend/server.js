@@ -40,7 +40,6 @@ async function initDb() {
       )
     `);
 
-    // Seed some services if empty
     const { rows } = await pool.query("SELECT COUNT(*) FROM services");
     if (parseInt(rows[0].count) === 0) {
       await pool.query(`
@@ -74,7 +73,7 @@ app.post('/bookings', async (req, res) => {
     const { customer_name, phone, vehicle_reg, service_id, location, lat, lng, accuracy, notes } = req.body;
     const result = await pool.query(
       `INSERT INTO bookings (customer_name, phone, vehicle_reg, service_id, location, lat, lng, accuracy, notes)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [customer_name, phone, vehicle_reg, service_id, location, lat, lng, accuracy, notes]
     );
     res.json({ success: true, booking: result.rows[0] });
