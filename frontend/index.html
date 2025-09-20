@@ -5,11 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
 <style>
-  body { font-family: sans-serif; display:flex; flex-direction:column; align-items:center; padding:20px; max-width:600px; margin:auto; }
-  h1 { font-size:2rem; text-align:center; margin-bottom:1rem; }
-  form { display:flex; flex-direction:column; gap:1rem; width:100%; }
-  input, select, button { padding:0.7rem; font-size:1rem; }
-  #ticketPopup { display:none; border:2px solid #333; padding:20px; margin-top:20px; width:100%; text-align:center; background:#fdf6e3; }
+  /* Golden ratio based layout */
+  :root {
+    --g: 1.618;
+  }
+  body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: calc(20px / var(--g));
+    max-width: 600px;
+    margin: auto;
+    background: #fdf6e3;
+    color: #333;
+  }
+  h1 {
+    font-size: calc(2rem * var(--g));
+    text-align: center;
+    margin-bottom: calc(20px / var(--g));
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: calc(15px / var(--g));
+    width: 100%;
+  }
+  input, select, button {
+    padding: calc(10px / var(--g));
+    font-size: calc(1rem * var(--g));
+    border: 1px solid #333;
+    border-radius: 5px;
+  }
+  button {
+    background-color: #0066cc;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button:hover { background-color: #004c99; }
+  #ticketPopup {
+    display: none;
+    border: 2px solid #333;
+    padding: calc(20px / var(--g));
+    margin-top: calc(20px / var(--g));
+    width: 100%;
+    text-align: center;
+    background: #fff3e0;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  }
+  #ticketPopup img { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -21,17 +66,101 @@
   <input type="email" id="email" placeholder="Email" required>
   <input type="tel" id="phone" placeholder="Phone" required>
   <input type="text" id="vehicle" placeholder="Vehicle Plate" required>
-  <select id="service" required></select>
-  <input type="text" id="address" placeholder="Address" readonly required>
+  <select id="service" required>
+    <option value="">Select a Service</option>
+  </select>
+  <input type="text" id="address" placeholder="Your Address" readonly required>
   <button type="submit">Book Now</button>
 </form>
 
 <div id="ticketPopup"></div>
 
-<script src="main.js"></script>
 <script>
+const API_BASE = 'https://<YOUR_BACKEND_URL>'; // replace with your Render backend URL
+
+// Load services from backend
+async function loadServices(){
+  const res = await fetch(`${API_BASE}/services`);
+  const services = await res.json();
+  const select = document.getElementById('service');
+  services.forEach(s=>{
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = `${s.name} (£${s.base_price})`;
+    select.appendChild(opt);
+  });
+}
+
+// Auto-location
+function getLocation(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(p=>{
+      const lat=p.coords.latitude.toFixed(6), lng=p.coords.longitude.toFixed(6);
+      document.getElementById('address').value=`Lat: ${lat}, Lng: ${lng}`;
+    }, err=>{
+      console.warn('Geolocation error:', err);
+      document.getElementById('address').placeholder="Enter your address manually";
+    });
+  } else {
+    document.getElementById('address').placeholder="Geolocation not supported";
+  }
+}
+
+// Vehicle plate formatting
+function formatPlate(plate){
+  return plate.toUpperCase().replace(/\s+/g,''); // simple formatting, can expand for UK style
+}
+
+// Show QR boarding pass popup
+function showTicket(id, data){
+  const popup = document.getElementById('ticketPopup');
+  popup.innerHTML = `
+    <h2>Booking Ticket</h2>
+    <p><strong>Booking ID:</strong> ${id}</p>
+    <p><strong>Name:</strong> ${data.name}</p>
+    <p><strong>Vehicle:</strong> ${data.vehicle_plate}</p>
+    <p><strong>Service:</strong> ${data.service_name}</p>
+    <p><strong>Address:</strong> ${data.address}</p>
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}" alt="QR Code" />
+    <p>Take a screenshot or download this ticket</p>
+  `;
+  popup.style.display='block';
+}
+
+// Booking submission
+document.getElementById('bookingForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const vehicle_plate = formatPlate(document.getElementById('vehicle').value);
+  const service_id = document.getElementById('service').value;
+  const service_name = document.getElementById('service').selectedOptions[0].text;
+  const address = document.getElementById('address').value;
+
+  if(!name || !email || !phone || !vehicle_plate || !service_id || !address){
+    alert("Please fill in all fields correctly.");
+    return;
+  }
+
+  try{
+    const resp = await fetch(`${API_BASE}/book`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,email,phone,vehicle_plate,service_id,address,lat:0,lng:0})
+    });
+    const result = await resp.json();
+    showTicket(result.booking_id, {name, vehicle_plate, service_name, address});
+  } catch(err){
+    console.error(err);
+    alert('Booking failed. Try again.');
+  }
+});
+
+// Initialize
 document.addEventListener('DOMContentLoaded', async ()=>{
-  await initCustomerBooking();
+  await loadServices();
+  getLocation();
 });
 </script>
 
