@@ -6,119 +6,228 @@
 <title>Customer Booking</title>
 <style>
   body {
-    font-family: Arial, sans-serif;
-    background: #f5f5f5;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f2f7ff;
     display: flex;
     justify-content: center;
-    padding: 2rem;
+    align-items: center;
+    min-height: 100vh;
   }
-  .booking-form {
+
+  .container {
     background: #fff;
-    padding: 2rem;
-    width: 90%;
+    width: 95%;
     max-width: 500px;
     border-radius: 12px;
-    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    padding: 2rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
     gap: 1.618rem; /* golden ratio spacing */
   }
+
+  h2 {
+    text-align: center;
+    color: #0074D9;
+    margin-bottom: 1rem;
+  }
+
   input, select, button {
-    padding: 0.8rem 1rem;
+    width: 100%;
+    padding: 0.9rem 1rem;
     font-size: 1rem;
     border-radius: 8px;
     border: 1px solid #ccc;
-    width: 100%;
     box-sizing: border-box;
   }
+
+  input:focus, select:focus {
+    border-color: #0074D9;
+    outline: none;
+  }
+
   button {
-    background: #0074D9;
+    background-color: #0074D9;
     color: white;
     font-weight: bold;
-    border: none;
     cursor: pointer;
     transition: background 0.3s ease;
+    margin-top: 0.5rem;
   }
+
   button:hover {
-    background: #005fa3;
+    background-color: #005fa3;
   }
-  #ticket {
-    margin-top: 2rem;
-    padding: 1rem;
-    border: 2px solid #0074D9;
-    border-radius: 8px;
-    background: #e6f0ff;
+
+  /* Ticket popup overlay */
+  #ticketOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right:0;
+    bottom:0;
+    background: rgba(0,0,0,0.5);
     display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
   }
+
+  #ticket {
+    background: #fff;
+    padding: 2rem;
+    width: 90%;
+    max-width: 400px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    position: relative;
+  }
+
+  #ticket h3 {
+    color: #0074D9;
+    margin-bottom: 1rem;
+    font-family:'Courier New', Courier, monospace;
+  }
+
+  #ticket p {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+  }
+
+  #ticket img {
+    margin: 1rem 0;
+  }
+
+  #closeTicket {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+  }
+
+  .ticket-section {
+    border: 2px dashed #0074D9;
+    padding: 1.5rem;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .ticket-row {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+  }
+
 </style>
 </head>
 <body>
-  <form class="booking-form" id="bookingForm">
-    <input type="text" id="name" placeholder="Full Name" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="tel" id="phone" placeholder="Phone" required>
-    <input type="text" id="vehicle" placeholder="Vehicle Registration (AB12CDE)" required>
-    <select id="service" required>
-      <option value="">Select Service</option>
-      <option value="1">Oil Change</option>
-      <option value="2">Brake Check</option>
-      <option value="3">Battery Replacement</option>
-      <option value="4">Tire Replacement</option>
-      <option value="5">Full Service</option>
-      <option value="6">AC Service</option>
-      <option value="7">Wheel Alignment</option>
-    </select>
-    <input type="text" id="location" placeholder="Your Location" readonly required>
-    <button type="button" onclick="getLocation()">Detect Location</button>
-    <button type="submit">Book Service</button>
-  </form>
 
-  <div id="ticket"></div>
+<div class="container">
+  <h2>Book Your Service</h2>
+  <input type="text" id="name" placeholder="Full Name" required>
+  <input type="email" id="email" placeholder="Email" required>
+  <input type="tel" id="phone" placeholder="Phone" required>
+  <input type="text" id="vehicle" placeholder="Vehicle Registration" required>
+  <select id="service" required>
+    <option value="">Select Service</option>
+    <option value="Oil Change">Oil Change</option>
+    <option value="Brake Check">Brake Check</option>
+    <option value="Battery Replacement">Battery Replacement</option>
+    <option value="Tire Replacement">Tire Replacement</option>
+    <option value="Full Service">Full Service</option>
+    <option value="AC Service">AC Service</option>
+    <option value="Wheel Alignment">Wheel Alignment</option>
+  </select>
+  <input type="text" id="location" placeholder="Your Location" readonly required>
+  <button type="button" onclick="getLocation()">Detect Location</button>
+  <button type="button" onclick="submitBooking()">Book Service</button>
+</div>
 
-  <script>
-    async function getLocation() {
-      if (!navigator.geolocation) return alert('Geolocation not supported!');
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
+<!-- Ticket Popup -->
+<div id="ticketOverlay">
+  <div id="ticket">
+    <button id="closeTicket" onclick="closeTicket()">×</button>
+    <div class="ticket-section">
+      <h3>SOS Mechanics Boarding Pass</h3>
+      <div class="ticket-row"><span>Customer:</span> <span id="ticketCustomer"></span></div>
+      <div class="ticket-row"><span>Vehicle:</span> <span id="ticketVehicle"></span></div>
+      <div class="ticket-row"><span>Service:</span> <span id="ticketService"></span></div>
+      <div class="ticket-row"><span>Location:</span> <span id="ticketLocation"></span></div>
+      <div style="text-align:center;">
+        <img id="ticketQR" src="" alt="QR Code" width="150" height="150">
+      </div>
+      <p style="text-align:center; font-size:0.85rem; color:#555;">Take a screenshot or download for your reference.</p>
+    </div>
+  </div>
+</div>
 
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-        const data = await res.json();
-        document.getElementById('location').value = data.display_name;
-      }, (err) => alert('Error getting location: ' + err.message));
-    }
+<script>
+async function getLocation() {
+  if (!navigator.geolocation) return alert('Geolocation not supported!');
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
 
-    const form = document.getElementById('bookingForm');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const data = {
-        customer_id: 1, // replace with real customer id
-        vehicle_reg: document.getElementById('vehicle').value.toUpperCase(),
-        service_id: document.getElementById('service').value,
-        location: document.getElementById('location').value
-      };
-      const res = await fetch('https://sos911.onrender.com/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const json = await res.json();
-      if (json.booking) showTicket(json.booking);
-      else alert('Booking failed!');
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+    const data = await res.json();
+    document.getElementById('location').value = data.display_name;
+    alert('Location detected: ' + data.display_name);
+  }, (err) => alert('Error getting location: ' + err.message));
+}
+
+async function submitBooking() {
+  const bookingData = {
+    name: document.getElementById('name').value,
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    vehicle: document.getElementById('vehicle').value.toUpperCase(),
+    service: document.getElementById('service').value,
+    location: document.getElementById('location').value
+  };
+
+  if (!bookingData.name || !bookingData.email || !bookingData.phone || !bookingData.vehicle || !bookingData.service || !bookingData.location) {
+    return alert('Fill all fields!');
+  }
+
+  try {
+    const res = await fetch('https://sos911.onrender.com/bookings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(bookingData)
     });
 
-    function showTicket(booking) {
-      const ticket = document.getElementById('ticket');
-      ticket.innerHTML = `
-        <h3>Booking Ticket</h3>
-        <p>Customer ID: ${booking.customer_id}</p>
-        <p>Vehicle: ${booking.vehicle_reg}</p>
-        <p>Service ID: ${booking.service_id}</p>
-        <p>Location: ${booking.location}</p>
-        <p>QR: ${booking.qr_code}</p>
-      `;
-      ticket.style.display = 'block';
+    const json = await res.json();
+    if (json.booking) {
+      showTicket(json.booking);
+    } else {
+      alert('Booking failed!');
     }
-  </script>
+  } catch(err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+function showTicket(booking) {
+  document.getElementById('ticketCustomer').innerText = booking.name;
+  document.getElementById('ticketVehicle').innerText = booking.vehicle;
+  document.getElementById('ticketService').innerText = booking.service;
+  document.getElementById('ticketLocation').innerText = booking.location;
+  document.getElementById('ticketQR').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${booking.qr_code}`;
+  document.getElementById('ticketOverlay').style.display = 'flex';
+}
+
+function closeTicket() {
+  document.getElementById('ticketOverlay').style.display = 'none';
+}
+</script>
+
 </body>
 </html>
