@@ -1,118 +1,183 @@
-// backend/server.js
 import express from "express";
-import pg from "pg";
 import cors from "cors";
 import dotenv from "dotenv";
+import pkg from "pg";
 
 dotenv.config();
+const { Pool } = pkg;
+
+// Use Render's DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
-
-// ✅ Initialize DB schema and dummy data
+// ✅ Init DB: create tables + insert dummy data if missing
 async function initDb() {
+  const client = await pool.connect();
   try {
-    const client = await pool.connect();
+    console.log("⏳ Setting up database...");
 
-    // Drop and recreate all tables
+    // Customers
     await client.query(`
-      DROP TABLE IF EXISTS bookings CASCADE;
-      DROP TABLE IF EXISTS customers CASCADE;
-      DROP TABLE IF EXISTS services CASCADE;
-
-      CREATE TABLE customers (
+      CREATE TABLE IF NOT EXISTS customers (
         id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        phone TEXT,
-        email TEXT
+        name VARCHAR(100),
+        email VARCHAR(100) UNIQUE,
+        phone VARCHAR(20)
       );
+    `);
 
-      CREATE TABLE services (
+    // Mechanics
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS mechanics (
         id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        price NUMERIC NOT NULL
+        name VARCHAR(100),
+        specialization VARCHAR(100)
       );
+    `);
 
-      CREATE TABLE bookings (
+    // Services
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS services (
         id SERIAL PRIMARY KEY,
-        customer_id INT REFERENCES customers(id),
-        service_id INT REFERENCES services(id),
-        booking_date TIMESTAMP NOT NULL,
+        name VARCHAR(100),
+        description TEXT,
+        price NUMERIC
+      );
+    `);
+
+    // Bookings
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id SERIAL PRIMARY KEY,
+        customer_id INT REFERENCES customers(id) ON DELETE CASCADE,
+        service_id INT REFERENCES services(id) ON DELETE CASCADE,
+        mechanic_id INT REFERENCES mechanics(id) ON DELETE SET NULL,
+        date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         location TEXT,
-        vehicle_plate TEXT,
-        status TEXT DEFAULT 'pending'
+        status VARCHAR(50) DEFAULT 'pending'
       );
     `);
 
-    // Insert dummy customers
-    await client.query(`
-      INSERT INTO customers (name, phone, email) VALUES
-      ('John Doe', '0711111111', 'john@example.com'),
-      ('Jane Smith', '0722222222', 'jane@example.com'),
-      ('Ali Khan', '0733333333', 'ali@example.com'),
-      ('Maria Lopez', '0744444444', 'maria@example.com'),
-      ('David Green', '0755555555', 'david@example.com');
-    `);
+    // Insert dummy services (only if empty)
+    const { rows: serviceCount } = await client.query(`SELECT COUNT(*) FROM services`);
+    if (parseInt(serviceCount[0].count) === 0) {
+      await client.query(`
+        INSERT INTO services (name, description, price) VALUES
+        ('Oil Change', 'Engine oil & filter replacement', 79.99),
+        ('Brake Service', 'Pads, discs check and replacement', 149.99),
+        ('Battery Replacement', 'Remove old, fit new battery', 120.00),
+        ('Diagnostic Check', 'Full OBD diagnostic scan', 59.99),
+        ('Full Service', 'Comprehensive yearly service', 249.99);
+      `);
+    }
 
-    // Insert dummy services
-    await client.query(`
-      INSERT INTO services (name, price) VALUES
-      ('Oil Change', 80),
-      ('Brake Pads Replacement', 120),
-      ('Battery Replacement', 150),
-      ('Diagnostics', 50),
-      ('MOT Pre-check', 60);
-    `);
+    // Insert dummy customers (only if empty)
+    const { rows: custCount } = await client.query(`SELECT COUNT(*) FROM customers`);
+    if (parseInt(custCount[0].count) === 0) {
+      await client.query(`
+        INSERT INTO customers (name, email, phone) VALUES
+        ('Ali Khan', 'ali@example.com', '03001234567'),
+        ('Sophie Brown', 'sophie@example.com', '07123456789'),
+        ('Carlos Diaz', 'carlos@example.com', '07222333444');
+      `);
+    }
+
+    // Insert dummy mechanics
+    const { rows: mechCount } = await client.query(`SELECT COUNT(*) FROM mechanics`);
+    if (parseInt(mechCount[0].count) === 0) {
+      await client.query(`
+        INSERT INTO mechanics (name, specialization) VALUES
+        ('John Mechanic', 'Brakes'),
+        ('Sara Fixit', 'Diagnostics'),
+        ('Mohammed Tools', 'General Service');
+      `);
+    }
 
     // Insert dummy bookings
-    await client.query(`
-      INSERT INTO bookings (customer_id, service_id, booking_date, location, vehicle_plate, status) VALUES
-      (1, 1, NOW() + interval '1 day', 'Chatham', 'AB12 CDE', 'pending'),
-      (2, 2, NOW() + interval '2 days', 'Rochester', 'CD34 EFG', 'pending'),
-      (3, 3, NOW() + interval '3 days', 'Gillingham', 'EF56 GHI', 'confirmed'),
-      (4, 4, NOW() + interval '4 days', 'Strood', 'GH78 IJK', 'in-progress'),
-      (5, 5, NOW() + interval '5 days', 'Rainham', 'IJ90 KLM', 'completed'),
-      (1, 2, NOW() + interval '6 days', 'Medway', 'KL12 MNO', 'pending'),
-      (2, 3, NOW() + interval '7 days', 'Chatham', 'MN34 OPQ', 'pending'),
-      (3, 1, NOW() + interval '8 days', 'Rochester', 'OP56 QRS', 'confirmed'),
-      (4, 5, NOW() + interval '9 days', 'Gillingham', 'QR78 STU', 'in-progress'),
-      (5, 4, NOW() + interval '10 days', 'Strood', 'ST90 UVW', 'completed');
-    `);
+    const { rows: bookingCount } = await client.query(`SELECT COUNT(*) FROM bookings`);
+    if (parseInt(bookingCount[0].count) === 0) {
+      await client.query(`
+        INSERT INTO bookings (customer_id, service_id, mechanic_id, location, status) VALUES
+        (1, 1, 1, 'London', 'completed'),
+        (1, 2, 2, 'London', 'pending'),
+        (2, 3, 1, 'Manchester', 'in-progress'),
+        (3, 4, 3, 'Birmingham', 'pending'),
+        (2, 5, 2, 'Leeds', 'completed'),
+        (1, 3, 2, 'Glasgow', 'pending'),
+        (3, 2, 1, 'Bradford', 'in-progress'),
+        (2, 1, 3, 'Liverpool', 'completed'),
+        (1, 4, 1, 'London', 'pending'),
+        (3, 5, 2, 'Nottingham', 'pending');
+      `);
+    }
 
-    client.release();
-    console.log("✅ Database initialized with dummy data");
+    console.log("✅ Database setup complete");
   } catch (err) {
     console.error("❌ Database init error:", err);
+  } finally {
+    client.release();
   }
 }
-
 initDb();
 
-// --- API Routes ---
+// ✅ Routes
+
+// Health check
 app.get("/", (req, res) => {
-  res.send("🚀 Server running & database connected!");
+  res.json({ message: "✅ Backend is running and DB connected!" });
 });
 
+// Get all services
 app.get("/services", async (req, res) => {
-  const result = await pool.query("SELECT * FROM services ORDER BY id");
-  res.json(result.rows);
+  try {
+    const { rows } = await pool.query("SELECT * FROM services");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
+// Get all bookings
+app.get("/bookings", async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT b.id, c.name AS customer, s.name AS service, m.name AS mechanic, b.date, b.location, b.status
+      FROM bookings b
+      LEFT JOIN customers c ON b.customer_id = c.id
+      LEFT JOIN services s ON b.service_id = s.id
+      LEFT JOIN mechanics m ON b.mechanic_id = m.id
+      ORDER BY b.date DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add new booking
 app.post("/bookings", async (req, res) => {
-  const { customer_id, service_id, booking_date, location, vehicle_plate } = req.body;
-  const result = await pool.query(
-    `INSERT INTO bookings (customer_id, service_id, booking_date, location, vehicle_plate)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [customer_id, service_id, booking_date, location, vehicle_plate]
-  );
-  res.json(result.rows[0]);
+  const { customer_id, service_id, mechanic_id, location } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO bookings (customer_id, service_id, mechanic_id, location, status)
+       VALUES ($1, $2, $3, $4, 'pending')
+       RETURNING *`,
+      [customer_id, service_id, mechanic_id, location]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// --- Start Server ---
+// Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
