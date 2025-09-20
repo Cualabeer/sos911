@@ -11,15 +11,14 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Use your Render PostgreSQL connection string from env variable
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
+// Initialize database and dummy data
 async function initDb() {
   try {
-    // Drop tables if exist
     await pool.query(`
       DROP TABLE IF EXISTS loyalty;
       DROP TABLE IF EXISTS bookings;
@@ -27,7 +26,7 @@ async function initDb() {
       DROP TABLE IF EXISTS customers;
     `);
 
-    // Customers
+    // Create tables
     await pool.query(`
       CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
@@ -37,7 +36,6 @@ async function initDb() {
       );
     `);
 
-    // Services
     await pool.query(`
       CREATE TABLE services (
         id SERIAL PRIMARY KEY,
@@ -46,7 +44,6 @@ async function initDb() {
       );
     `);
 
-    // Bookings
     await pool.query(`
       CREATE TABLE bookings (
         id SERIAL PRIMARY KEY,
@@ -59,7 +56,6 @@ async function initDb() {
       );
     `);
 
-    // Loyalty
     await pool.query(`
       CREATE TABLE loyalty (
         id SERIAL PRIMARY KEY,
@@ -82,7 +78,30 @@ async function initDb() {
       await pool.query('INSERT INTO services(name, price) VALUES($1,$2)', s);
     }
 
-    console.log('✅ Database initialized');
+    // Insert dummy customers and bookings
+    for (let i = 1; i <= 5; i++) {
+      const customerRes = await pool.query(
+        'INSERT INTO customers(name,email,phone) VALUES($1,$2,$3) RETURNING id',
+        [`Customer ${i}`, `customer${i}@example.com`, `070000000${i}`]
+      );
+      const customerId = customerRes.rows[0].id;
+
+      // Random bookings for this customer
+      for (let j = 0; j < 2; j++) {
+        const serviceId = Math.floor(Math.random() * services.length) + 1;
+        const vehicle = `AB12CDE`;
+        const location = `Address ${i}-${j}`;
+        const bookingRes = await pool.query(
+          'INSERT INTO bookings(customer_id, service_id, vehicle, location) VALUES($1,$2,$3,$4) RETURNING id',
+          [customerId, serviceId, vehicle, location]
+        );
+        const bookingId = bookingRes.rows[0].id;
+        const qr = await QRCode.toDataURL(`booking:${bookingId}`);
+        await pool.query('UPDATE bookings SET qr_code=$1 WHERE id=$2', [qr, bookingId]);
+      }
+    }
+
+    console.log('✅ Database initialized with dummy data');
   } catch (err) {
     console.error('❌ Database init error:', err);
   }
@@ -98,7 +117,7 @@ async function generateQR(text) {
   }
 }
 
-// API to check DB status
+// Check DB status
 app.get('/status', async (req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -108,7 +127,7 @@ app.get('/status', async (req, res) => {
   }
 });
 
-// API to create booking
+// Create new booking
 app.post('/bookings', async (req, res) => {
   try {
     const { name, email, phone, vehicle, service, location } = req.body;
