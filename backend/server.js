@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { Pool } = require('pg');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -15,7 +16,14 @@ const pool = new Pool({
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Utility: Role-based middleware
+// --- Serve frontend ---
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
+
+// --- Utility: Role-based middleware ---
 function auth(role) {
   return async (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
@@ -162,6 +170,11 @@ app.get('/job/:id/ticket', auth(), async (req, res) => {
   } catch(err){
     res.status(500).json({ error: err.message });
   }
+});
+
+// --- Catch-all route to serve frontend pages ---
+app.get('*', (req,res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
