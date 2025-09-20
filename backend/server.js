@@ -17,24 +17,10 @@ function generateQR() {
   return crypto.randomBytes(8).toString('hex'); // 16-char code
 }
 
-// Initialize QR codes for existing bookings
-async function initQRCodes() {
-  try {
-    const res = await pool.query(`SELECT id FROM bookings WHERE qr_code IS NULL`);
-    for (const row of res.rows) {
-      const qrCode = generateQR();
-      await pool.query(`UPDATE bookings SET qr_code=$1 WHERE id=$2`, [qrCode, row.id]);
-      console.log(`Booking ${row.id} QR code set: ${qrCode}`);
-    }
-    console.log('All missing QR codes initialized.');
-  } catch (err) {
-    console.error('Error initializing QR codes:', err);
-  }
-}
-
-// Initialize database and dummy data if empty
+// Initialize database and ensure qr_code column exists
 async function initDb() {
   try {
+    // Create bookings table if it doesn't exist
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bookings (
         id SERIAL PRIMARY KEY,
@@ -46,20 +32,30 @@ async function initDb() {
         start_time TIMESTAMP,
         end_time TIMESTAMP,
         parts TEXT,
-        labor NUMERIC,
-        qr_code TEXT UNIQUE
+        labor NUMERIC
       )
     `);
 
+    // Check if qr_code column exists
+    const colRes = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='bookings' AND column_name='qr_code'
+    `);
+    if (colRes.rows.length === 0) {
+      await pool.query(`ALTER TABLE bookings ADD COLUMN qr_code TEXT UNIQUE`);
+      console.log('qr_code column added to bookings table.');
+    }
+
+    // Add dummy data if table empty
     const res = await pool.query('SELECT COUNT(*) FROM bookings');
     if (parseInt(res.rows[0].count) === 0) {
       console.log('Adding dummy bookings...');
       for (let i = 1; i <= 10; i++) {
-        const qr = generateQR();
         await pool.query(
-          `INSERT INTO bookings (customer_name, vehicle_reg, service_name, location, qr_code)
-           VALUES ($1,$2,$3,$4,$5)`,
-          [`Customer ${i}`, `AB12CDE${i}`, `Service ${i % 5 + 1}`, `Address ${i}`, qr]
+          `INSERT INTO bookings (customer_name, vehicle_reg, service_name, location)
+           VALUES ($1,$2,$3,$4)`,
+          [`Customer ${i}`, `AB12CDE${i}`, `Service ${i % 5 + 1}`, `Address ${i}`]
         );
       }
     }
@@ -67,6 +63,21 @@ async function initDb() {
     console.log('Database initialized.');
   } catch (err) {
     console.error('Database init error:', err);
+  }
+}
+
+// Initialize QR codes for all bookings without one
+async function initQRCodes() {
+  try {
+    const res = await pool.query(`SELECT id FROM bookings WHERE qr_code IS NULL`);
+    for (const row of res.rows) {
+      const qrCode = generateQR();
+      await pool.query(`UPDATE bookings SET qr_code=$1 WHERE id=$2`, [qrCode, row.id]);
+      console.log(`Booking ${row.id} QR code set: ${qrCode}`);
+    }
+    console.log('All missing QR codes initialized.');
+  } catch (err) {
+    console.error('Error initializing QR codes:', err);
   }
 }
 
@@ -144,10 +155,11 @@ app.post('/bookings/:id/override', async (req, res) => {
   }
 });
 
-// Server start
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   await initDb();      // Create table + dummy data if empty
   await initQRCodes(); // Generate QR codes for existing bookings
+  console.log('✅ Backend is running and DB connected!');
 });
