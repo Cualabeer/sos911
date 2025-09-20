@@ -59,7 +59,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script>
-const API_BASE = 'https://YOUR_BACKEND_URL_HERE'; // <- replace with your backend
+const API_BASE = 'https://sos911.onrender.com'; // backend URL
 
 // Auto geolocate
 function setLocation() {
@@ -67,8 +67,9 @@ function setLocation() {
     navigator.geolocation.getCurrentPosition(async pos => {
       const lat = pos.coords.latitude.toFixed(6);
       const lng = pos.coords.longitude.toFixed(6);
+      document.getElementById('address').dataset.latlng = `${lat},${lng}`;
 
-      // Reverse geocode using free API (OpenStreetMap Nominatim)
+      // Free reverse geocode
       const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
       const data = await resp.json();
       document.getElementById('address').value = data.display_name || '';
@@ -101,7 +102,6 @@ document.getElementById('bookingForm').addEventListener('submit', async e => {
   const email = document.getElementById('email').value.trim();
   const phone = document.getElementById('phone').value.trim();
   let vehicle_plate = document.getElementById('vehicle_plate').value.toUpperCase().replace(/\s+/g,'');
-  // Format like AB12 CDE
   vehicle_plate = vehicle_plate.slice(0,2)+' '+vehicle_plate.slice(2,4)+' '+vehicle_plate.slice(4);
 
   const service_id = document.getElementById('service').value;
