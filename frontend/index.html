@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
 <style>
-  /* Golden ratio based layout */
-  :root {
-    --g: 1.618;
-  }
+  /* Golden ratio layout */
+  :root { --g: 1.618; }
   body {
     font-family: sans-serif;
     display: flex;
@@ -20,46 +18,20 @@
     background: #fdf6e3;
     color: #333;
   }
-  h1 {
-    font-size: calc(2rem * var(--g));
-    text-align: center;
-    margin-bottom: calc(20px / var(--g));
-  }
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: calc(15px / var(--g));
-    width: 100%;
-  }
-  input, select, button {
-    padding: calc(10px / var(--g));
-    font-size: calc(1rem * var(--g));
-    border: 1px solid #333;
-    border-radius: 5px;
-  }
-  button {
-    background-color: #0066cc;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-  }
-  button:hover { background-color: #004c99; }
-  #ticketPopup {
-    display: none;
-    border: 2px solid #333;
-    padding: calc(20px / var(--g));
-    margin-top: calc(20px / var(--g));
-    width: 100%;
-    text-align: center;
-    background: #fff3e0;
-    box-shadow: 0 0 10px rgba(0,0,0,0.2);
-  }
-  #ticketPopup img { margin-top: 10px; }
+  h1 { font-size: calc(2rem * var(--g)); margin-bottom: calc(20px / var(--g)); text-align:center; }
+  form { display: flex; flex-direction: column; gap: calc(15px / var(--g)); width:100%; }
+  input, select, button { padding: calc(10px / var(--g)); font-size: calc(1rem * var(--g)); border:1px solid #333; border-radius:5px; }
+  button { background-color:#0066cc; color:white; font-weight:bold; cursor:pointer; }
+  button:hover { background-color:#004c99; }
+  #ticketPopup { display:none; border:2px solid #333; padding:calc(20px / var(--g)); margin-top:calc(20px / var(--g)); width:100%; text-align:center; background:#fff3e0; box-shadow:0 0 10px rgba(0,0,0,0.2);}
+  #ticketPopup img { margin-top:10px; }
+  #dbStatus { font-weight:bold; margin-bottom:calc(15px / var(--g)); }
 </style>
 </head>
 <body>
 
 <h1>Book Your Mobile Mechanic</h1>
+<p id="dbStatus">Checking database connection...</p>
 
 <form id="bookingForm">
   <input type="text" id="name" placeholder="Full Name" required>
@@ -76,22 +48,47 @@
 <div id="ticketPopup"></div>
 
 <script>
-const API_BASE = 'https://<YOUR_BACKEND_URL>'; // replace with your Render backend URL
+const API_BASE = 'https://<YOUR_BACKEND_URL>'; // replace with your backend URL
+
+// Database connection check
+async function checkDbStatus(){
+  try {
+    const res = await fetch(`${API_BASE}/status`);
+    const data = await res.json();
+    const statusEl = document.getElementById('dbStatus');
+    if(data.db === 'connected'){
+      statusEl.textContent = 'Database connected ✅';
+      statusEl.style.color = 'green';
+    } else {
+      statusEl.textContent = 'Database disconnected ❌';
+      statusEl.style.color = 'red';
+    }
+  } catch(err){
+    console.error(err);
+    const statusEl = document.getElementById('dbStatus');
+    statusEl.textContent = 'Database disconnected ❌';
+    statusEl.style.color = 'red';
+  }
+}
 
 // Load services from backend
 async function loadServices(){
-  const res = await fetch(`${API_BASE}/services`);
-  const services = await res.json();
-  const select = document.getElementById('service');
-  services.forEach(s=>{
-    const opt = document.createElement('option');
-    opt.value = s.id;
-    opt.textContent = `${s.name} (£${s.base_price})`;
-    select.appendChild(opt);
-  });
+  try{
+    const res = await fetch(`${API_BASE}/services`);
+    const services = await res.json();
+    const select = document.getElementById('service');
+    services.forEach(s=>{
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = `${s.name} (£${s.base_price})`;
+      select.appendChild(opt);
+    });
+  } catch(err){
+    console.error('Failed to load services', err);
+  }
 }
 
-// Auto-location
+// Geolocation
 function getLocation(){
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(p=>{
@@ -106,12 +103,12 @@ function getLocation(){
   }
 }
 
-// Vehicle plate formatting
+// Format vehicle plate
 function formatPlate(plate){
-  return plate.toUpperCase().replace(/\s+/g,''); // simple formatting, can expand for UK style
+  return plate.toUpperCase().replace(/\s+/g,''); 
 }
 
-// Show QR boarding pass popup
+// Show ticket popup
 function showTicket(id, data){
   const popup = document.getElementById('ticketPopup');
   popup.innerHTML = `
@@ -127,7 +124,7 @@ function showTicket(id, data){
   popup.style.display='block';
 }
 
-// Booking submission
+// Submit booking
 document.getElementById('bookingForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const name = document.getElementById('name').value.trim();
@@ -158,8 +155,9 @@ document.getElementById('bookingForm').addEventListener('submit', async e=>{
 });
 
 // Initialize
-document.addEventListener('DOMContentLoaded', async ()=>{
-  await loadServices();
+document.addEventListener('DOMContentLoaded', ()=>{
+  checkDbStatus();
+  loadServices();
   getLocation();
 });
 </script>
