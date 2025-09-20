@@ -5,123 +5,137 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
 <style>
-  body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f5f5f5; display:flex; flex-direction:column; align-items:center; }
-  header { width:100%; background:#0055aa; color:white; padding:1em; text-align:center; font-size:1.5em; }
-  form { background:white; padding:2em; margin-top:2em; border-radius:1em; width:90%; max-width:500px; display:flex; flex-direction:column; gap:1em; }
-  input, select, button { padding:0.8em; font-size:1em; border-radius:0.5em; border:1px solid #ccc; width:100%; box-sizing:border-box; }
-  button { background:#0055aa; color:white; border:none; cursor:pointer; }
-  button:hover { background:#003377; }
-  #bookingMessage { margin-top:1em; font-weight:bold; }
-  footer { margin-top:2em; font-weight:bold; }
-  #ticketPopup { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:white; padding:2em; border-radius:1em; box-shadow:0 0 20px rgba(0,0,0,0.3); width:90%; max-width:400px; text-align:center; }
-  #ticketPopup button { margin-top:1em; }
+  :root {
+    --golden: 1.618;
+    --primary: #007BFF;
+    --white: #ffffff;
+    --spacing: 16px;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    background: var(--white);
+    color: #333;
+    margin: var(--spacing);
+  }
+  h1 { margin-bottom: calc(var(--spacing) * var(--golden)); }
+  form { display: flex; flex-direction: column; max-width: 480px; margin: auto; gap: calc(var(--spacing) * var(--golden)); }
+  input, select, button { padding: var(--spacing); font-size: 1rem; border: 1px solid #ccc; border-radius: 6px; }
+  button { background: var(--primary); color: white; border: none; cursor: pointer; }
+  button:disabled { background: #aaa; }
+  #dbStatus { margin-top: var(--spacing); text-align: center; font-weight: bold; }
+  #ticketPopup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background:white; border: 2px solid #333; padding: calc(var(--spacing) * var(--golden)); z-index:100; max-width: 90%; }
+  #ticketPopup pre { white-space: pre-wrap; font-family: monospace; }
 </style>
 </head>
 <body>
-<header>Mobile Mechanic Booking</header>
 
-<form id="bookingForm" onsubmit="event.preventDefault(); submitBooking();">
-  <input type="text" id="name" placeholder="Name" required>
-  <input type="email" id="email" placeholder="Email" required>
-  <input type="text" id="phone" placeholder="Phone" required>
-  <input type="text" id="vehicle" placeholder="Vehicle Registration" required oninput="formatPlate(this)">
-  <select id="service" required>
+<h1>Book Your Mobile Mechanic</h1>
+<form id="bookingForm">
+  <input type="text" id="name" name="name" placeholder="Full Name" required>
+  <input type="email" id="email" name="email" placeholder="Email" required>
+  <input type="text" id="phone" name="phone" placeholder="Phone (+44XXXXXXXXXX or 0XXXXXXXXXX)" required>
+  <input type="text" id="vehicle" name="vehicle" placeholder="Vehicle Number Plate (UK)" required>
+  <select id="service" name="service" required>
     <option value="">Select Service</option>
-    <option value="Oil Change">Oil Change</option>
-    <option value="Brake Repair">Brake Repair</option>
-    <option value="Full Service">Full Service</option>
-    <option value="Battery Replacement">Battery Replacement</option>
-    <option value="Tyre Change">Tyre Change</option>
+    <option>Oil Change</option>
+    <option>Brake Repair</option>
+    <option>Full Service</option>
+    <option>Battery Replacement</option>
+    <option>Tyre Change</option>
   </select>
-  <input type="text" id="location" placeholder="Location" required>
-  <button type="submit">Book Service</button>
+  <input type="text" id="location" name="location" placeholder="Your Location" readonly required>
+  <button type="submit" id="submitBtn" disabled>Book Now</button>
 </form>
 
-<div id="bookingMessage"></div>
-<footer id="dbStatus">Checking database...</footer>
+<div id="dbStatus">Checking DB...</div>
 
-<!-- Ticket Popup -->
 <div id="ticketPopup">
   <h2>Booking Ticket</h2>
-  <p id="ticketName"></p>
-  <p id="ticketVehicle"></p>
-  <p id="ticketService"></p>
-  <p id="ticketLocation"></p>
-  <canvas id="qrCodeCanvas"></canvas>
+  <pre id="ticketContent"></pre>
   <button onclick="closeTicket()">Close</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <script>
-// --- DB Status ---
-async function checkDbStatus() {
-    try {
-        const res = await fetch('https://sos911.onrender.com/status');
-        const json = await res.json();
-        if (json.status === 'ok') document.getElementById('dbStatus').innerText = '✅ Database connected. Bookings working.';
-        else document.getElementById('dbStatus').innerText = '❌ Database not connected.';
-    } catch(err) {
-        document.getElementById('dbStatus').innerText = '❌ Database not connected. Error: ' + err.message;
+const poolStatusEl = document.getElementById('dbStatus');
+const submitBtn = document.getElementById('submitBtn');
+const locationInput = document.getElementById('location');
+
+const ukPhoneRegex = /^(?:0|\+44)\d{10}$/;
+const ukPlateRegex = /^[A-Z]{2}\d{2}\s?[A-Z]{3}$/i;
+
+// Check backend DB connection
+async function checkDb() {
+  try {
+    const res = await fetch('https://sos911.onrender.com/status');
+    const json = await res.json();
+    if(json.status === 'ok'){
+      poolStatusEl.innerText = '✅ Database connected. Bookings working.';
+    } else {
+      poolStatusEl.innerText = '❌ Database not connected';
     }
+  } catch(err){
+    poolStatusEl.innerText = '❌ Database not connected';
+  }
 }
-checkDbStatus();
+checkDb();
 
-// --- Vehicle Plate ---
-function formatPlate(input) {
-    let value = input.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
-    if(value.length>4) value=value.slice(0,value.length-3)+' '+value.slice(-3);
-    input.value=value;
+// Auto-location
+navigator.geolocation.getCurrentPosition(async pos => {
+  const { latitude, longitude } = pos.coords;
+  // Reverse geocode with OpenStreetMap Nominatim free API
+  const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`);
+  const data = await resp.json();
+  locationInput.value = data.display_name;
+  submitBtn.disabled = false;
+}, err => {
+  locationInput.value = 'Unable to get location';
+  submitBtn.disabled = true;
+});
+
+// Booking submission
+document.getElementById('bookingForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  let vehicle = document.getElementById('vehicle').value.trim().toUpperCase().replace(/\s?/,' ');
+  const service = document.getElementById('service').value;
+  const location = locationInput.value;
+
+  if(!name || !email || !phone || !vehicle || !service || !location){
+    return alert('All fields are required');
+  }
+  if(!ukPhoneRegex.test(phone)) return alert('Invalid UK phone number');
+  if(!ukPlateRegex.test(vehicle)) return alert('Invalid UK number plate');
+
+  try{
+    const res = await fetch('https://sos911.onrender.com/bookings', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name,email,phone,vehicle,service,location})
+    });
+    const json = await res.json();
+    if(json.error) return alert('Booking failed: '+json.error);
+    
+    // Show ticket popup
+    document.getElementById('ticketContent').innerText = `
+Booking ID: ${json.booking.id}
+Customer: ${json.booking.customer_id}
+Service: ${service}
+Vehicle: ${vehicle}
+Location: ${location}
+QR: ${json.booking.qr_code}
+Date: ${new Date(json.booking.created_at).toLocaleString()}
+`;
+    document.getElementById('ticketPopup').style.display = 'block';
+  } catch(err){
+    alert('Booking failed: '+err.message);
+  }
+});
+
+function closeTicket(){
+  document.getElementById('ticketPopup').style.display = 'none';
 }
-function validatePlate(plate){
-    const regex=/^[A-Z]{2}[0-9]{2} [A-Z]{3}$/;
-    return regex.test(plate);
-}
-
-// --- Booking Submission ---
-async function submitBooking() {
-    const bookingData = {
-        name: document.getElementById('name').value,
-        email: document.getElementById('email').value,
-        phone: document.getElementById('phone').value,
-        vehicle: document.getElementById('vehicle').value,
-        service: document.getElementById('service').value,
-        location: document.getElementById('location').value
-    };
-    const msgDiv = document.getElementById('bookingMessage');
-    msgDiv.style.color='red';
-
-    if (!bookingData.name || !bookingData.email || !bookingData.phone || !bookingData.vehicle || !bookingData.service || !bookingData.location) {
-        msgDiv.innerText='❌ All fields are required.'; return;
-    }
-    if(!validatePlate(bookingData.vehicle)) { msgDiv.innerText='❌ Invalid UK vehicle registration. Format AB12 CDE.'; return; }
-
-    try {
-        const res=await fetch('https://sos911.onrender.com/bookings',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify(bookingData)
-        });
-        const json=await res.json();
-        if(json.error){ msgDiv.innerText='❌ Booking failed: '+json.error; }
-        else if(json.booking){ 
-            msgDiv.style.color='green';
-            msgDiv.innerText='✅ Booking successful!';
-            showTicket(json.booking);
-        } else { msgDiv.innerText='❌ Booking failed. No booking returned.'; }
-    } catch(err){ msgDiv.innerText='❌ Booking failed. '+err.message; }
-}
-
-// --- Ticket Popup ---
-function showTicket(booking){
-    document.getElementById('ticketName').innerText='Name: '+booking.name;
-    document.getElementById('ticketVehicle').innerText='Vehicle: '+booking.vehicle;
-    document.getElementById('ticketService').innerText='Service: '+booking.service;
-    document.getElementById('ticketLocation').innerText='Location: '+booking.location;
-    const canvas=document.getElementById('qrCodeCanvas');
-    QRCode.toCanvas(canvas, booking.qr_code, {width:200});
-    document.getElementById('ticketPopup').style.display='block';
-}
-function closeTicket(){ document.getElementById('ticketPopup').style.display='none'; }
 </script>
 </body>
 </html>
