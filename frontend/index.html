@@ -3,200 +3,153 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOS Mechanics - Book a Service</title>
+<title>SOS Mechanics - Customer Booking</title>
 <style>
   body {
     font-family: Arial, sans-serif;
     background: #ffffff;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   header {
-    background: #007BFF;
+    width: 100%;
+    background: #0057b7;
     color: white;
+    padding: 1.618rem 0; /* golden ratio spacing */
     text-align: center;
-    padding: 1rem 0;
-    font-size: 1.5rem;
+    font-size: 2rem;
   }
   main {
     max-width: 600px;
-    margin: calc(2rem / 1.618) auto; /* golden ratio spacing */
-    padding: calc(1rem * 1.618);
-    background: #f9f9f9;
-    border-radius: 10px;
+    width: 90%;
+    margin: 2rem auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.618rem;
   }
-  label {
-    display: block;
-    margin-top: calc(1rem / 1.618);
-    font-weight: bold;
-  }
-  input, select, textarea {
-    width: 100%;
-    padding: calc(0.7rem * 1.618);
-    margin-top: calc(0.3rem * 1.618);
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
+  input, select, button {
+    padding: 0.618rem 1rem; /* golden ratio */
     font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
   }
   button {
-    background: #007BFF;
+    background: #0057b7;
     color: white;
     border: none;
-    padding: calc(1rem * 1.618);
-    margin-top: calc(1rem * 1.618);
-    width: 100%;
-    font-size: 1.2rem;
-    border-radius: 5px;
     cursor: pointer;
+    font-weight: bold;
   }
   button:hover {
-    background: #0056b3;
+    background: #004096;
   }
-  .status {
-    margin-top: calc(1rem / 1.618);
-    padding: calc(0.8rem / 1.618);
-    border-radius: 5px;
+  .confirmation {
+    background: #f0f8ff;
+    padding: 1.618rem;
+    border-radius: 0.618rem;
+    text-align: center;
+    display: none;
+    flex-direction: column;
+    gap: 0.618rem;
   }
-  .status.success {
-    background: #d4edda;
-    color: #155724;
-  }
-  .status.error {
-    background: #f8d7da;
-    color: #721c24;
-  }
-  #map {
-    width: 100%;
-    height: 200px;
-    margin-top: calc(1rem * 1.618);
-    border-radius: 10px;
-    border: 1px solid #ccc;
+  .qr-code {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #333;
   }
 </style>
 </head>
 <body>
-<header>
-  SOS Mechanics - Book a Service
-</header>
+
+<header>SOS Mechanics - Book a Service</header>
+
 <main>
   <form id="bookingForm">
-    <label for="customer_name">Full Name</label>
-    <input type="text" id="customer_name" name="customer_name" required>
-
-    <label for="phone">Phone Number</label>
-    <input type="tel" id="phone" name="phone" required pattern="[0-9]{10,15}" placeholder="07123456789">
-
-    <label for="vehicle_reg">Vehicle Registration</label>
-    <input type="text" id="vehicle_reg" name="vehicle_reg" required placeholder="AB12 CDE" maxlength="8">
-
-    <label for="service">Select Service</label>
-    <select id="service" name="service" required>
-      <option value="">Loading services...</option>
+    <input type="text" id="customer_name" placeholder="Your Name" required>
+    <input type="text" id="vehicle_reg" placeholder="Vehicle Registration" required>
+    <select id="service_name" required>
+      <option value="">Select Service</option>
+      <option value="Oil Change">Oil Change</option>
+      <option value="Brake Check">Brake Check</option>
+      <option value="Battery Replacement">Battery Replacement</option>
+      <option value="Tire Replacement">Tire Replacement</option>
+      <option value="Full Service">Full Service</option>
     </select>
-
-    <label>Location</label>
-    <div id="map">Loading map...</div>
-
-    <label for="notes">Additional Notes</label>
-    <textarea id="notes" name="notes" rows="3" placeholder="Any special instructions"></textarea>
-
-    <button type="submit">Book Now</button>
-    <div id="status" class="status"></div>
+    <input type="text" id="location" placeholder="Your Location" required>
+    <button type="submit">Book Service</button>
   </form>
+
+  <div class="confirmation" id="confirmation">
+    <p>✅ Booking Confirmed!</p>
+    <p>Your QR code: <span class="qr-code" id="qrCode"></span></p>
+    <p>Show this QR code to the mechanic.</p>
+  </div>
 </main>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
 <script>
-const statusDiv = document.getElementById('status');
-const serviceSelect = document.getElementById('service');
-const vehicleInput = document.getElementById('vehicle_reg');
-const mapDiv = document.getElementById('map');
+const form = document.getElementById('bookingForm');
+const confirmation = document.getElementById('confirmation');
+const qrCodeEl = document.getElementById('qrCode');
+const locationInput = document.getElementById('location');
 
-let lat = 0, lng = 0, accuracy = 0;
+// Auto-detect location
+if(navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
 
-// Vehicle reg auto uppercase
-vehicleInput.addEventListener('input', e => {
-  e.target.value = e.target.value.toUpperCase();
-});
-
-// Load services
-fetch('/services')
-  .then(res => res.json())
-  .then(data => {
-    serviceSelect.innerHTML = '<option value="">Select Service</option>';
-    data.forEach(s => {
-      serviceSelect.innerHTML += `<option value="${s.id}">${s.name} - £${s.price}</option>`;
-    });
+    // Free reverse geocode via OpenStreetMap Nominatim
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+    const data = await res.json();
+    locationInput.value = data.display_name || '';
+  }, (err) => {
+    console.warn('Location access denied:', err);
   });
-
-// Map setup
-const map = L.map('map');
-let marker;
-
-function updateMarker(lat, lng) {
-  if (!marker) {
-    marker = L.marker([lat, lng], { draggable: true }).addTo(map);
-    marker.on('dragend', e => {
-      const pos = e.target.getLatLng();
-      lat = pos.lat;
-      lng = pos.lng;
-    });
-  } else {
-    marker.setLatLng([lat, lng]);
-  }
-  map.setView([lat, lng], 15);
 }
 
-// Auto-locate
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(pos => {
-    lat = pos.coords.latitude;
-    lng = pos.coords.longitude;
-    accuracy = pos.coords.accuracy;
-    updateMarker(lat, lng);
-  }, () => {
-    map.setView([51.389, 0.523], 13); // fallback to Medway center
-  });
-} else {
-  map.setView([51.389, 0.523], 13);
-}
-
-// Submit booking
-document.getElementById('bookingForm').addEventListener('submit', async e => {
+form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const formData = {
-    customer_name: document.getElementById('customer_name').value,
-    phone: document.getElementById('phone').value,
-    vehicle_reg: document.getElementById('vehicle_reg').value,
-    service_id: document.getElementById('service').value,
-    location: `Lat:${lat}, Lng:${lng}`,
-    lat, lng, accuracy,
-    notes: document.getElementById('notes').value
+
+  const booking = {
+    customer_name: document.getElementById('customer_name').value.trim(),
+    vehicle_reg: formatReg(document.getElementById('vehicle_reg').value.trim()),
+    service_name: document.getElementById('service_name').value,
+    location: document.getElementById('location').value.trim()
   };
 
   try {
     const res = await fetch('/bookings', {
       method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify(formData)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(booking)
     });
     const data = await res.json();
-    if (data.success) {
-      statusDiv.className = 'status success';
-      statusDiv.textContent = '✅ Booking successful!';
-      e.target.reset();
+    if(data.qr_code) {
+      qrCodeEl.textContent = data.qr_code;
+      confirmation.style.display = 'flex';
+      form.reset();
     } else {
-      throw new Error(data.error || 'Booking failed');
+      alert('Booking failed');
     }
   } catch(err) {
-    statusDiv.className = 'status error';
-    statusDiv.textContent = '❌ Booking failed, try again.';
     console.error(err);
+    alert('Error connecting to server');
   }
 });
+
+// Format vehicle registration in uppercase with space
+function formatReg(reg) {
+  reg = reg.toUpperCase().replace(/\s+/g,'');
+  // UK style: 2-2-3 pattern (example: AB12 CDE)
+  if(reg.length === 7) {
+    return reg.slice(0,2)+' '+reg.slice(2,4)+' '+reg.slice(4);
+  }
+  return reg;
+}
 </script>
+
 </body>
 </html>
