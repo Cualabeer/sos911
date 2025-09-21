@@ -3,127 +3,276 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Customer Booking & Diagnostics</title>
+<title>SOS Mechanics - Customer Booking</title>
 <style>
-  body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f0f4f8; }
-  header { background:#0074D9; color:white; padding:1rem; text-align:center; }
-  main { padding:1rem; max-width:800px; margin:auto; }
-  section { margin-bottom:2rem; background:white; padding:1rem; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
-  h2 { margin-top:0; }
-  label { display:block; margin-top:1rem; }
-  input, select, textarea { width:100%; padding:0.5rem; margin-top:0.3rem; }
-  button { margin-top:1rem; padding:0.5rem 1rem; background:#0074D9; color:white; border:none; border-radius:5px; cursor:pointer; }
-  button:hover { background:#005fa3; }
-  .status { margin-top:0.5rem; padding:0.5rem; border-radius:5px; }
-  .status.ok { background:#d4edda; color:#155724; }
-  .status.fail { background:#f8d7da; color:#721c24; }
-  img.qr { margin-top:1rem; max-width:200px; display:block; }
+  :root {
+    --primary-color: #0074D9; /* Blue */
+    --secondary-color: #ffffff;
+    --accent-color: #FF851B;
+    --font: Arial, sans-serif;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background-color: var(--secondary-color);
+    color: #111;
+  }
+
+  header {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    padding: 2rem;
+    text-align: center;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 2.5rem;
+  }
+
+  section {
+    max-width: 900px;
+    margin: auto;
+    padding: 2rem;
+  }
+
+  .services, .faq {
+    margin-bottom: 2rem;
+  }
+
+  .services h2, .faq h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--primary-color);
+  }
+
+  .service-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+
+  .service-card {
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .faq-item {
+    border-bottom: 1px solid #ddd;
+    padding: 1rem 0;
+  }
+
+  .faq-item button {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.5rem 0;
+  }
+
+  .faq-item p {
+    display: none;
+    padding: 0.5rem 0;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  input, select, textarea {
+    padding: 0.75rem;
+    font-size: 1rem;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+
+  button {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    border: none;
+    padding: 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+
+  button:hover {
+    background-color: var(--accent-color);
+  }
+
+  #footer {
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+    background-color: #f1f1f1;
+  }
+
+  /* Ticket popup */
+  #ticket-popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--secondary-color);
+    border: 2px solid var(--primary-color);
+    padding: 2rem;
+    z-index: 1000;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    border-radius: 12px;
+  }
+
+  #ticket-popup img {
+    width: 200px;
+    margin: 1rem 0;
+  }
+
+  #ticket-popup button {
+    margin-top: 1rem;
+  }
 </style>
 </head>
 <body>
+
 <header>
-  <h1>Customer Booking & Diagnostics</h1>
+  <h1>SOS Mechanics</h1>
+  <p>Your trusted mobile mechanic in Medway</p>
 </header>
-<main>
-  <section>
-    <h2>Diagnostics</h2>
-    <div id="db-status" class="status">Checking DB...</div>
-    <div id="api-status"></div>
-    <button onclick="runDiagnostics()">Refresh Diagnostics</button>
-  </section>
 
-  <section>
-    <h2>Book a Service</h2>
-    <form id="bookingForm">
-      <label>Name<input type="text" name="name" required></label>
-      <label>Phone<input type="text" name="phone" required></label>
-      <label>Number Plate<input type="text" name="numberPlate" maxlength="8" required></label>
-      <label>Service
-        <select name="service" id="serviceSelect" required></select>
-      </label>
-      <label>Notes<textarea name="notes"></textarea></label>
-      <button type="submit">Book Now</button>
-    </form>
-    <div id="bookingResult"></div>
-  </section>
-</main>
+<section class="hero">
+  <h2>Book Your Mobile Service</h2>
+  <p>Fast, reliable, and professional at your doorstep.</p>
+</section>
 
+<section class="services">
+  <h2>Our Services</h2>
+  <div class="service-list">
+    <div class="service-card">Oil Change</div>
+    <div class="service-card">Brake Replacement</div>
+    <div class="service-card">Battery Replacement</div>
+    <!-- Add more services here -->
+  </div>
+</section>
+
+<section class="faq">
+  <h2>FAQ</h2>
+  <div class="faq-item">
+    <button>How do I book a service?</button>
+    <p>Simply fill the form below and submit. You'll get a confirmation ticket.</p>
+  </div>
+  <div class="faq-item">
+    <button>Do you service my area?</button>
+    <p>We cover the entire Medway area. Enter your postcode to check.</p>
+  </div>
+  <!-- Add more FAQs -->
+</section>
+
+<section class="booking">
+  <h2>Book a Service</h2>
+  <form id="booking-form">
+    <input type="text" name="name" placeholder="Full Name" required>
+    <input type="text" name="phone" placeholder="Phone Number" required>
+    <input type="text" name="email" placeholder="Email" required>
+    <input type="text" name="numberPlate" placeholder="Vehicle Registration" required>
+    <select name="service" required>
+      <option value="">Select Service</option>
+      <option value="Oil Change">Oil Change</option>
+      <option value="Brake Replacement">Brake Replacement</option>
+      <option value="Battery Replacement">Battery Replacement</option>
+    </select>
+    <textarea name="notes" placeholder="Additional Notes"></textarea>
+    <input type="hidden" name="latitude">
+    <input type="hidden" name="longitude">
+    <button type="submit">Book Service</button>
+  </form>
+</section>
+
+<div id="ticket-popup">
+  <h3>Booking Confirmation</h3>
+  <p>Scan this QR on arrival:</p>
+  <img id="ticket-qr" src="" alt="QR Code">
+  <button onclick="closeTicket()">Close</button>
+</div>
+
+<div id="footer">
+  Database Status: <span id="db-status">Checking...</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js" integrity="sha512-XiYH7mZVE2NYUeYl+Z35RFi7rM0V8oqWkNjAq8nXN3hS7xe7VtTeErxNZhGJqT1QW8r7N3AqWfD9XJvGJ5xwRw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <script>
-  const backend = 'https://sos911.onrender.com'; // change if needed
+  // FAQ accordion
+  document.querySelectorAll('.faq-item button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = btn.nextElementSibling;
+      p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    });
+  });
 
-  async function runDiagnostics(){
-    const dbStatusEl = document.getElementById('db-status');
-    const apiStatusEl = document.getElementById('api-status');
-    try{
-      const res = await fetch(`${backend}/api/diagnostics`);
-      const data = await res.json();
-      dbStatusEl.textContent = data.database ? 'Database Connected ✅' : 'Database Not Connected ❌';
-      dbStatusEl.className = 'status ' + (data.database?'ok':'fail');
-
-      let html = '<h3>API Endpoints</h3><ul>';
-      data.endpoints.forEach(ep=>{
-        html += `<li>${ep.method} ${ep.path}</li>`;
-      });
-      html += '</ul>';
-      apiStatusEl.innerHTML = html;
-    }catch(err){
-      dbStatusEl.textContent = 'Database Not Connected ❌';
-      dbStatusEl.className='status fail';
-      apiStatusEl.innerHTML = '<p style="color:red;">API fetch error: '+err.message+'</p>';
-    }
+  // Location detection
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      document.querySelector('[name="latitude"]').value = lat;
+      document.querySelector('[name="longitude"]').value = lon;
+    });
   }
 
-  async function loadServices(){
-    const select = document.getElementById('serviceSelect');
-    try{
-      const res = await fetch(`${backend}/api/services`);
-      const data = await res.json();
-      select.innerHTML = '';
-      data.forEach(s=>{
-        const opt = document.createElement('option');
-        opt.value = s.name;
-        opt.textContent = `${s.name} (£${s.price})`;
-        select.appendChild(opt);
-      });
-    }catch(err){
-      select.innerHTML='<option value="">Error loading services</option>';
-    }
-  }
+  // Number plate formatting
+  const numberPlateInput = document.querySelector('[name="numberPlate"]');
+  numberPlateInput.addEventListener('input', () => {
+    let val = numberPlateInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (val.length > 2) val = val.slice(0, 2) + ' ' + val.slice(2);
+    numberPlateInput.value = val;
+  });
 
-  document.getElementById('bookingForm').addEventListener('submit', async (e)=>{
+  // Booking form submission
+  document.getElementById('booking-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const payload = {
-      name: form.name.value,
-      phone: form.phone.value,
-      numberPlate: form.numberPlate.value.toUpperCase(),
-      service: form.service.value,
-      notes: form.notes.value,
-      lat: 51.386, // demo coordinates, replace with precise geo if needed
-      lng: 0.521
-    };
-    const resultEl = document.getElementById('bookingResult');
-    try{
-      const res = await fetch(`${backend}/api/bookings`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if(data.success){
-        resultEl.innerHTML = `<p style="color:green;">Booking Successful!</p>
-                              <img src="${data.qr}" class="qr">
-                              <p>Show QR to mechanic on arrival.</p>`;
+    const data = Object.fromEntries(new FormData(form));
+    try {
+      const res = await axios.post('https://sos911.onrender.com/api/book', data);
+      if (res.data.success) {
+        // Generate QR
+        QRCode.toDataURL(res.data.qrCodeData, { width: 200 }, (err, url) => {
+          document.getElementById('ticket-qr').src = url;
+          document.getElementById('ticket-popup').style.display = 'block';
+        });
       } else {
-        resultEl.innerHTML = `<p style="color:red;">Booking Failed: ${data.error}</p>`;
+        alert('Booking failed: ' + res.data.message);
       }
-    }catch(err){
-      resultEl.innerHTML = `<p style="color:red;">Booking Error: ${err.message}</p>`;
+    } catch (err) {
+      alert('Booking failed: ' + err.message);
     }
   });
 
-  loadServices();
-  runDiagnostics();
+  function closeTicket() {
+    document.getElementById('ticket-popup').style.display = 'none';
+  }
+
+  // Check DB status
+  async function checkDB() {
+    try {
+      const res = await axios.get('https://sos911.onrender.com/api/db-status');
+      document.getElementById('db-status').innerText = res.data.connected ? '✅ Connected' : '❌ Not Connected';
+    } catch {
+      document.getElementById('db-status').innerText = '❌ Not Connected';
+    }
+  }
+  checkDB();
 </script>
+
 </body>
 </html>
