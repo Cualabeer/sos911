@@ -3,26 +3,81 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Book a Service</title>
-<link rel="stylesheet" href="styles.css">
+<title>Mobile Mechanic Booking</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-  header { background: #1e90ff; color: white; padding: 20px; text-align: center; }
-  main { padding: 20px; max-width: 800px; margin: auto; }
-  form { display: flex; flex-direction: column; gap: 15px; background: white; padding: 20px; border-radius: 10px; }
-  input, select, button { padding: 10px; font-size: 1em; border-radius: 5px; border: 1px solid #ccc; }
-  button { background: #1e90ff; color: white; border: none; cursor: pointer; }
-  button:hover { background: #0073e6; }
-  footer { background: #f1f1f1; padding: 15px; text-align: center; font-size: 0.9em; color: #333; }
-  .status { display: inline-block; margin: 0 5px; font-weight: bold; }
-  .ok { color: green; }
-  .fail { color: red; }
+  /* Golden ratio layout */
+  :root {
+    --golden-ratio: 1.618;
+    --primary-color: #007bff;
+    --secondary-color: #ffffff;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0; padding: 0;
+    background: var(--secondary-color);
+  }
+  header {
+    background: var(--primary-color);
+    color: var(--secondary-color);
+    padding: 2rem;
+    text-align: center;
+  }
+  main {
+    max-width: 800px;
+    margin: auto;
+    padding: 2rem;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.618rem; /* golden spacing */
+  }
+  input, select, button {
+    padding: 0.8rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.3rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  button {
+    background: var(--primary-color);
+    color: var(--secondary-color);
+    border: none;
+    cursor: pointer;
+  }
+  footer {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.9rem;
+    color: gray;
+  }
+  #ticket-popup {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border: 2px solid #007bff;
+    padding: 2rem;
+    z-index: 1000;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+  }
+  #overlay {
+    display: none;
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Book a Mobile Mechanic Service</h1>
+  <h1>Mobile Mechanic Booking</h1>
 </header>
 
 <main>
@@ -30,97 +85,137 @@
     <input type="text" id="name" placeholder="Full Name" required>
     <input type="text" id="phone" placeholder="Phone Number" required>
     <input type="text" id="numberPlate" placeholder="Number Plate (UK)" required>
-    <select id="service" required>
-      <option value="">Select a Service</option>
-      <option value="oil-change">Oil Change</option>
-      <option value="brake-repair">Brake Repair</option>
-      <option value="battery-replacement">Battery Replacement</option>
-    </select>
+    <select id="service" required></select>
     <input type="datetime-local" id="datetime" required>
+    <input type="text" id="location" placeholder="Your Address" required>
     <button type="submit">Book Service</button>
+    <div id="formError" style="color:red;"></div>
   </form>
 </main>
 
-<footer>
-  Database: <span id="dbStatus" class="status">Checking...</span>
-  Services: <span id="servicesStatus" class="status">Checking...</span>
-  Bookings: <span id="bookingsStatus" class="status">Checking...</span>
-  <div id="last-checked"></div>
-</footer>
+<footer id="dbStatus">Checking database...</footer>
+
+<div id="overlay"></div>
+<div id="ticket-popup">
+  <h2>Booking Confirmed</h2>
+  <p id="ticketDetails"></p>
+  <button onclick="closeTicket()">Close</button>
+</div>
 
 <script>
-async function checkApi(url) {
+const form = document.getElementById('bookingForm');
+const dbStatus = document.getElementById('dbStatus');
+const serviceSelect = document.getElementById('service');
+const numberPlateInput = document.getElementById('numberPlate');
+const ticketPopup = document.getElementById('ticket-popup');
+const overlay = document.getElementById('overlay');
+const ticketDetails = document.getElementById('ticketDetails');
+const formError = document.getElementById('formError');
+
+// Auto-format number plate to UK format
+numberPlateInput.addEventListener('input', () => {
+  numberPlateInput.value = numberPlateInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+});
+
+// Fetch services
+async function loadServices() {
+  const res = await fetch('/api/services');
+  const services = await res.json();
+  serviceSelect.innerHTML = '<option value="">Select Service</option>';
+  services.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = `${s.name} (£${s.price})`;
+    serviceSelect.appendChild(opt);
+  });
+}
+
+// Check DB connection
+async function checkDB() {
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await fetch('/api/db-status');
     const data = await res.json();
-    return { success: true, data };
-  } catch (err) {
-    return { success: false, error: err.message };
+    dbStatus.textContent = data.connected ? '✅ Database connected' : '❌ Database not connected';
+  } catch(err) {
+    dbStatus.textContent = '❌ Database not connected';
   }
 }
 
-async function updateDiagnostics() {
-  // Database
-  const db = await checkApi('/api/db-status');
-  const dbSpan = document.getElementById('dbStatus');
-  dbSpan.textContent = db.success ? '✅ Connected' : `❌ ${db.error}`;
-  dbSpan.className = `status ${db.success ? 'ok' : 'fail'}`;
-
-  // Services
-  const services = await checkApi('/api/services');
-  const svcSpan = document.getElementById('servicesStatus');
-  svcSpan.textContent = services.success ? `✅ ${services.data.length} found` : `❌ ${services.error}`;
-  svcSpan.className = `status ${services.success ? 'ok' : 'fail'}`;
-
-  // Bookings
-  const bookings = await checkApi('/api/bookings');
-  const bookSpan = document.getElementById('bookingsStatus');
-  bookSpan.textContent = bookings.success ? `✅ ${bookings.data.length} found` : `❌ ${bookings.error}`;
-  bookSpan.className = `status ${bookings.success ? 'ok' : 'fail'}`;
-
-  const now = new Date();
-  document.getElementById('last-checked').textContent = `Last Checked: ${now.toLocaleString()}`;
+// Detect location
+async function detectLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      // Reverse geocode with OpenStreetMap Nominatim free API
+      const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+      const data = await resp.json();
+      document.getElementById('location').value = data.display_name || '';
+    });
+  }
 }
 
-// Run diagnostics every 30 seconds
-updateDiagnostics();
-setInterval(updateDiagnostics, 30000);
-
-// Auto-format UK number plate
-const plateInput = document.getElementById('numberPlate');
-plateInput.addEventListener('input', () => {
-  plateInput.value = plateInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-});
-
-// Booking submission
-document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+// Form submission
+form.addEventListener('submit', async e => {
   e.preventDefault();
+  formError.textContent = '';
   const payload = {
-    name: document.getElementById('name').value,
-    phone: document.getElementById('phone').value,
-    numberPlate: document.getElementById('numberPlate').value,
-    service: document.getElementById('service').value,
+    name: document.getElementById('name').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    numberPlate: numberPlateInput.value.trim(),
+    service: serviceSelect.value,
     datetime: document.getElementById('datetime').value,
+    location: document.getElementById('location').value.trim()
   };
+
+  // Simple validation
+  if(!payload.name || !payload.phone || !payload.numberPlate || !payload.service || !payload.datetime || !payload.location) {
+    formError.textContent = 'Please fill in all fields';
+    return;
+  }
+
+  // UK plate regex
+  const plateRegex = /^[A-Z]{2}\d{2}[A-Z]{3}$/;
+  if(!plateRegex.test(payload.numberPlate)) {
+    formError.textContent = 'Number plate invalid (UK format required)';
+    return;
+  }
 
   try {
     const res = await fetch('/api/bookings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
     const data = await res.json();
-    if (res.ok) {
-      alert('Booking Successful! Ticket generated.');
-      console.log(data);
+    if(data.error) {
+      formError.textContent = data.error;
     } else {
-      alert('Booking Failed: ' + data.error);
+      ticketDetails.textContent = `
+        Name: ${payload.name}
+        Service: ${payload.service}
+        Date/Time: ${payload.datetime}
+        Location: ${payload.location}
+        Number Plate: ${payload.numberPlate}
+      `;
+      overlay.style.display = 'block';
+      ticketPopup.style.display = 'block';
+      form.reset();
     }
   } catch(err) {
-    alert('Booking Failed: ' + err.message);
+    formError.textContent = 'Booking failed: ' + err.message;
   }
 });
+
+function closeTicket() {
+  ticketPopup.style.display = 'none';
+  overlay.style.display = 'none';
+}
+
+// Initialize page
+loadServices();
+checkDB();
+detectLocation();
 </script>
 
 </body>
