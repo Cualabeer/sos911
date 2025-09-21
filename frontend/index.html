@@ -3,100 +3,127 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOS Mechanics - Medway</title>
+<title>Customer Booking & Diagnostics</title>
 <style>
-  body { margin:0;font-family:sans-serif;background:#f8f9fa;color:#222; }
-  header{background:#0056b3;color:#fff;padding:2rem;text-align:center;}
-  section{padding:2rem;max-width:900px;margin:auto;}
-  h1,h2{margin-bottom:1rem;}
-  .service-list { display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem; }
-  .service-card{padding:1rem;border:1px solid #ddd;border-radius:8px;background:#fff;}
-  .faq-item{margin-bottom:1rem;}
-  input,select,button{padding:0.5rem;margin:0.5rem 0;width:100%;box-sizing:border-box;}
-  #bookingForm{display:flex;flex-direction:column;}
-  footer{background:#eee;text-align:center;padding:1rem;margin-top:2rem;}
-  #ticketPopup{display:none;position:fixed;top:10%;left:50%;transform:translateX(-50%);background:#fff;padding:2rem;border:2px solid #0056b3;border-radius:10px;z-index:1000;}
+  body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f0f4f8; }
+  header { background:#0074D9; color:white; padding:1rem; text-align:center; }
+  main { padding:1rem; max-width:800px; margin:auto; }
+  section { margin-bottom:2rem; background:white; padding:1rem; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+  h2 { margin-top:0; }
+  label { display:block; margin-top:1rem; }
+  input, select, textarea { width:100%; padding:0.5rem; margin-top:0.3rem; }
+  button { margin-top:1rem; padding:0.5rem 1rem; background:#0074D9; color:white; border:none; border-radius:5px; cursor:pointer; }
+  button:hover { background:#005fa3; }
+  .status { margin-top:0.5rem; padding:0.5rem; border-radius:5px; }
+  .status.ok { background:#d4edda; color:#155724; }
+  .status.fail { background:#f8d7da; color:#721c24; }
+  img.qr { margin-top:1rem; max-width:200px; display:block; }
 </style>
 </head>
 <body>
-
 <header>
-  <h1>SOS Mechanics - Mobile Service Medway</h1>
+  <h1>Customer Booking & Diagnostics</h1>
 </header>
+<main>
+  <section>
+    <h2>Diagnostics</h2>
+    <div id="db-status" class="status">Checking DB...</div>
+    <div id="api-status"></div>
+    <button onclick="runDiagnostics()">Refresh Diagnostics</button>
+  </section>
 
-<section>
-  <h2>Book Your Service</h2>
-  <form id="bookingForm">
-    <input type="text" id="name" placeholder="Your Name" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="tel" id="phone" placeholder="Phone" required>
-    <input type="text" id="vehicle" placeholder="Vehicle Number (UK)" required>
-    <input type="text" id="location" placeholder="Location" required>
-    <select id="service" required></select>
-    <button type="submit">Book Service</button>
-  </form>
-</section>
-
-<section>
-  <h2>Our Services</h2>
-  <div class="service-list" id="servicesContainer"></div>
-</section>
-
-<section>
-  <h2>FAQ</h2>
-  <div class="faq-item"><strong>Q:</strong> Do you come to my location? <br> <strong>A:</strong> Yes, we provide mobile service across Medway.</div>
-  <div class="faq-item"><strong>Q:</strong> How long will it take? <br> <strong>A:</strong> Usually 30–60 minutes per job depending on service.</div>
-</section>
-
-<div id="ticketPopup">
-  <h3>Your Service Ticket</h3>
-  <img id="qrImage" alt="QR Code"><br>
-  <button onclick="document.getElementById('ticketPopup').style.display='none'">Close</button>
-</div>
-
-<footer>
-  <span id="dbStatus">Checking database...</span>
-</footer>
+  <section>
+    <h2>Book a Service</h2>
+    <form id="bookingForm">
+      <label>Name<input type="text" name="name" required></label>
+      <label>Phone<input type="text" name="phone" required></label>
+      <label>Number Plate<input type="text" name="numberPlate" maxlength="8" required></label>
+      <label>Service
+        <select name="service" id="serviceSelect" required></select>
+      </label>
+      <label>Notes<textarea name="notes"></textarea></label>
+      <button type="submit">Book Now</button>
+    </form>
+    <div id="bookingResult"></div>
+  </section>
+</main>
 
 <script>
-const backend = 'https://sos911.onrender.com';
+  const backend = 'https://sos911.onrender.com'; // change if needed
 
-// Load services
-fetch(backend+'/services').then(r=>r.json()).then(data=>{
-  const sel = document.getElementById('service');
-  const container = document.getElementById('servicesContainer');
-  data.forEach(s=>{
-    let opt = document.createElement('option'); opt.value=s.id; opt.text=s.category+' - '+s.name; sel.add(opt);
-    let card = document.createElement('div'); card.className='service-card'; card.innerHTML=`<strong>${s.category}</strong><br>${s.name}<br>£${s.price}`; container.appendChild(card);
-  });
-});
+  async function runDiagnostics(){
+    const dbStatusEl = document.getElementById('db-status');
+    const apiStatusEl = document.getElementById('api-status');
+    try{
+      const res = await fetch(`${backend}/api/diagnostics`);
+      const data = await res.json();
+      dbStatusEl.textContent = data.database ? 'Database Connected ✅' : 'Database Not Connected ❌';
+      dbStatusEl.className = 'status ' + (data.database?'ok':'fail');
 
-// DB status
-fetch(backend+'/dbstatus').then(r=>r.json()).then(r=>{
-  document.getElementById('dbStatus').innerText = r.connected?'✅ Database connected':'❌ Database not connected';
-});
-
-// Booking
-document.getElementById('bookingForm').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const payload = {
-    customer_id: 1, // temp demo
-    service_id: document.getElementById('service').value,
-    vehicle_number: document.getElementById('vehicle').value.toUpperCase(),
-    location: document.getElementById('location').value,
-    latitude: 0,
-    longitude:0
-  };
-  const resp = await fetch(backend+'/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  const data = await resp.json();
-  if(data.success){
-    document.getElementById('qrImage').src = data.qr_code;
-    document.getElementById('ticketPopup').style.display='block';
-  } else {
-    alert('Booking failed: '+(data.error||'Unknown'));
+      let html = '<h3>API Endpoints</h3><ul>';
+      data.endpoints.forEach(ep=>{
+        html += `<li>${ep.method} ${ep.path}</li>`;
+      });
+      html += '</ul>';
+      apiStatusEl.innerHTML = html;
+    }catch(err){
+      dbStatusEl.textContent = 'Database Not Connected ❌';
+      dbStatusEl.className='status fail';
+      apiStatusEl.innerHTML = '<p style="color:red;">API fetch error: '+err.message+'</p>';
+    }
   }
-});
-</script>
 
+  async function loadServices(){
+    const select = document.getElementById('serviceSelect');
+    try{
+      const res = await fetch(`${backend}/api/services`);
+      const data = await res.json();
+      select.innerHTML = '';
+      data.forEach(s=>{
+        const opt = document.createElement('option');
+        opt.value = s.name;
+        opt.textContent = `${s.name} (£${s.price})`;
+        select.appendChild(opt);
+      });
+    }catch(err){
+      select.innerHTML='<option value="">Error loading services</option>';
+    }
+  }
+
+  document.getElementById('bookingForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const form = e.target;
+    const payload = {
+      name: form.name.value,
+      phone: form.phone.value,
+      numberPlate: form.numberPlate.value.toUpperCase(),
+      service: form.service.value,
+      notes: form.notes.value,
+      lat: 51.386, // demo coordinates, replace with precise geo if needed
+      lng: 0.521
+    };
+    const resultEl = document.getElementById('bookingResult');
+    try{
+      const res = await fetch(`${backend}/api/bookings`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if(data.success){
+        resultEl.innerHTML = `<p style="color:green;">Booking Successful!</p>
+                              <img src="${data.qr}" class="qr">
+                              <p>Show QR to mechanic on arrival.</p>`;
+      } else {
+        resultEl.innerHTML = `<p style="color:red;">Booking Failed: ${data.error}</p>`;
+      }
+    }catch(err){
+      resultEl.innerHTML = `<p style="color:red;">Booking Error: ${err.message}</p>`;
+    }
+  });
+
+  loadServices();
+  runDiagnostics();
+</script>
 </body>
 </html>
