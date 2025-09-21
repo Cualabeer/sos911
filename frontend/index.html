@@ -1,172 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mobile Mechanic Booking</title>
-<style>
-  /* Golden ratio layout */
-  body { font-family: Arial, sans-serif; margin: 0; padding: 0; line-height: 1.618; background: #f7f9fc; }
-  header { background: #1e90ff; color: #fff; padding: 2rem; text-align: center; }
-  main { max-width: 900px; margin: auto; padding: 2rem; }
-  form { display: flex; flex-direction: column; gap: 1.618rem; background: #fff; padding: 2rem; border-radius: 10px; }
-  label { font-weight: bold; }
-  input, select, textarea { padding: 0.618rem; font-size: 1rem; border-radius: 5px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
-  button { padding: 1rem; font-size: 1rem; background: #1e90ff; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
-  button:hover { background: #0b66c3; }
-  footer { text-align: center; padding: 1rem; font-size: 0.9rem; background: #e0e0e0; margin-top: 2rem; }
-  .faq { margin-top: 2rem; }
-  .faq-item { border-bottom: 1px solid #ccc; }
-  .faq-item button { width: 100%; text-align: left; background: none; border: none; padding: 1rem; font-size: 1rem; cursor: pointer; }
-  .faq-item p { display: none; padding: 1rem; margin: 0; }
-  .faq-item.open p { display: block; }
-  #map { height: 250px; margin-top: 1rem; border-radius: 10px; }
-</style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOS Mechanics - Book Service</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .container { max-width: 900px; margin: auto; padding: 2rem; }
+    .footer { position: fixed; bottom: 0; left: 0; width: 100%; background: #007bff; color: #fff; padding: 1rem; text-align: center; z-index: 1000; cursor: pointer; }
+    #diagnosticsPanel { display: none; position: fixed; bottom: 0; left: 0; width: 100%; max-height: 80%; overflow-y: auto; background: #f8f9fa; border-top: 3px solid #007bff; padding: 1rem; z-index: 1100; box-shadow: 0 -3px 10px rgba(0,0,0,0.2); }
+    .diag-section { border-bottom: 1px solid #ddd; margin-bottom: 0.5rem; padding-bottom: 0.5rem; }
+    .diag-header { font-weight: bold; }
+    .status-ok { color: green; font-weight: bold; }
+    .status-fail { color: red; font-weight: bold; }
+    .status-warn { color: orange; font-weight: bold; }
+    .form-floating { margin-bottom: 1rem; }
+  </style>
 </head>
 <body>
 
-<header>
-  <h1>Book Your Mobile Mechanic</h1>
-</header>
+  <div class="container">
+    <h1 class="mb-4">Book a Mobile Service</h1>
+    <form id="bookingForm">
+      <div class="form-floating">
+        <input type="text" class="form-control" id="name" placeholder="Full Name" required>
+        <label for="name">Full Name</label>
+      </div>
 
-<main>
-  <form id="bookingForm">
-    <label for="name">Full Name</label>
-    <input type="text" id="name" required>
+      <div class="form-floating">
+        <input type="tel" class="form-control" id="phone" placeholder="Phone Number" required>
+        <label for="phone">Phone (UK)</label>
+      </div>
 
-    <label for="phone">Phone (UK)</label>
-    <input type="tel" id="phone" pattern="^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$" placeholder="07123 456 789" required>
+      <div class="form-floating">
+        <input type="text" class="form-control" id="email" placeholder="Email" required>
+        <label for="email">Email</label>
+      </div>
 
-    <label for="email">Email</label>
-    <input type="email" id="email" placeholder="example@email.com" required>
+      <div class="form-floating">
+        <input type="text" class="form-control" id="numberPlate" placeholder="Vehicle Registration" required>
+        <label for="numberPlate">Number Plate</label>
+      </div>
 
-    <label for="regPlate">Registration Plate</label>
-    <input type="text" id="regPlate" placeholder="AB12 CDE" maxlength="8" required>
+      <div class="form-floating">
+        <input type="text" class="form-control" id="address" placeholder="Address" required>
+        <label for="address">Address</label>
+      </div>
 
-    <label for="service">Service Required</label>
-    <select id="service" required>
-      <option value="">Select a service</option>
-      <option value="oil_change">Oil Change - Change engine oil and filter</option>
-      <option value="brake_check">Brake Check - Inspect and replace pads if needed</option>
-      <option value="battery_replace">Battery Replacement - Replace car battery</option>
-    </select>
+      <div class="form-floating">
+        <select class="form-select" id="service" required>
+          <option value="">Select Service</option>
+          <option value="oil-change">Oil Change</option>
+          <option value="brake-check">Brake Check</option>
+          <option value="battery-replacement">Battery Replacement</option>
+        </select>
+        <label for="service">Service</label>
+      </div>
 
-    <label for="address">Address</label>
-    <input type="text" id="address" placeholder="Detecting location..." required readonly>
-
-    <div id="map"></div>
-
-    <button type="submit">Book Service</button>
-    <div id="bookingStatus"></div>
-  </form>
-
-  <div class="faq">
-    <h2>FAQs</h2>
-    <div class="faq-item">
-      <button type="button">How long does a service take?</button>
-      <p>Most standard services take 30-60 minutes depending on the work.</p>
-    </div>
-    <div class="faq-item">
-      <button type="button">Do you provide parts?</button>
-      <p>Yes, all standard parts are included in the service cost.</p>
-    </div>
-    <div class="faq-item">
-      <button type="button">Can I reschedule?</button>
-      <p>Yes, you can reschedule 24 hours before the booking.</p>
-    </div>
+      <button type="submit" class="btn btn-primary w-100">Book Service</button>
+      <div id="formMessage" class="mt-3"></div>
+    </form>
   </div>
-</main>
 
-<footer id="footer">
-  Database status: <span id="dbStatus">Checking...</span>
-</footer>
+  <div class="footer" id="diagnosticsBtn">Check System Diagnostics</div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-  // FAQ accordion
-  document.querySelectorAll('.faq-item button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const item = btn.parentElement;
-      item.classList.toggle('open');
-    });
-  });
+  <div id="diagnosticsPanel">
+    <h5>System Diagnostics</h5>
+    <div id="diagContent"></div>
+  </div>
 
-  // Location detection
-  const addressInput = document.getElementById('address');
-  let userCoords = null;
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script>
+    // ---------- Form Validation ----------
+    const bookingForm = document.getElementById('bookingForm');
+    const formMessage = document.getElementById('formMessage');
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
-      userCoords = [pos.coords.latitude, pos.coords.longitude];
-      addressInput.value = `Lat: ${userCoords[0].toFixed(6)}, Lon: ${userCoords[1].toFixed(6)}`;
-
-      const map = L.map('map').setView(userCoords, 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-      L.marker(userCoords).addTo(map).bindPopup("You are here").openPopup();
-    }, err => {
-      addressInput.value = "Unable to detect location";
-    });
-  }
-
-  // Number plate formatting
-  const regInput = document.getElementById('regPlate');
-  regInput.addEventListener('input', () => {
-    let value = regInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (value.length > 4) {
-      value = value.slice(0,4) + ' ' + value.slice(4);
-    }
-    regInput.value = value;
-  });
-
-  // Booking form submit
-  const form = document.getElementById('bookingForm');
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const name = document.getElementById('name').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const regPlate = document.getElementById('regPlate').value.trim();
-    const service = document.getElementById('service').value;
-    const address = document.getElementById('address').value;
-
-    if (!name || !phone || !email || !regPlate || !service || !address) {
-      document.getElementById('bookingStatus').textContent = "Booking failed: Missing fields";
-      return;
+    function validateUKPhone(phone) {
+      return /^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$/.test(phone);
     }
 
-    // Send booking to backend
-    try {
-      const res = await fetch('https://sos911.onrender.com/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, email, regPlate, service, address, lat: userCoords[0], lon: userCoords[1] })
-      });
-      const data = await res.json();
-      if (data.success) {
-        document.getElementById('bookingStatus').textContent = "✅ Booking successful!";
-      } else {
-        document.getElementById('bookingStatus').textContent = "❌ Booking failed: " + data.error;
+    function validateUKPlate(plate) {
+      return /^[A-Z]{2}[0-9]{2}\s?[A-Z]{3}$/.test(plate.toUpperCase());
+    }
+
+    function validateEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    bookingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+      let plate = document.getElementById('numberPlate').value.trim().toUpperCase();
+      plate = plate.replace(/ /g, '');
+      plate = plate.slice(0,4) + ' ' + plate.slice(4); // simple spacing
+      document.getElementById('numberPlate').value = plate;
+      const address = document.getElementById('address').value.trim();
+      const service = document.getElementById('service').value;
+
+      if (!name || !validateUKPhone(phone) || !validateEmail(email) || !validateUKPlate(plate) || !address || !service) {
+        formMessage.innerHTML = '<span class="text-danger">Booking Failed: Missing or invalid fields</span>';
+        return;
       }
-    } catch(err) {
-      document.getElementById('bookingStatus').textContent = "❌ Booking failed: " + err.message;
-    }
-  });
 
-  // Database status fetch
-  async function checkDB() {
-    try {
-      const res = await fetch('https://sos911.onrender.com/api/db-status');
-      const data = await res.json();
-      document.getElementById('dbStatus').textContent = data.connected ? "Connected" : "Not connected";
-    } catch(err) {
-      document.getElementById('dbStatus').textContent = "Not connected: " + err.message;
-    }
-  }
-  checkDB();
-</script>
+      try {
+        const res = await axios.post('https://sos911.onrender.com/api/bookings', {
+          name, phone, email, numberPlate: plate, address, service
+        });
+        formMessage.innerHTML = '<span class="text-success">Booking Successful!</span>';
+      } catch (err) {
+        formMessage.innerHTML = `<span class="text-danger">Booking Failed: ${err.response?.data?.message || err.message}</span>`;
+      }
+    });
 
+    // ---------- Diagnostics ----------
+    const diagBtn = document.getElementById('diagnosticsBtn');
+    const diagPanel = document.getElementById('diagnosticsPanel');
+    const diagContent = document.getElementById('diagContent');
+
+    diagBtn.addEventListener('click', async () => {
+      diagPanel.style.display = diagPanel.style.display === 'block' ? 'none' : 'block';
+      diagContent.innerHTML = '<p>Checking...</p>';
+
+      const diagnostics = [];
+
+      // Database
+      try {
+        const dbRes = await axios.get('https://sos911.onrender.com/api/db-status');
+        diagnostics.push({ name: 'Database Connection', status: 'ok', detail: dbRes.data.message });
+      } catch (err) {
+        diagnostics.push({ name: 'Database Connection', status: 'fail', detail: err.message });
+      }
+
+      // Services
+      try {
+        const svcRes = await axios.get('https://sos911.onrender.com/api/services');
+        diagnostics.push({ name: 'Services API', status: 'ok', detail: `${svcRes.data.length} services loaded` });
+      } catch (err) {
+        diagnostics.push({ name: 'Services API', status: 'fail', detail: err.message });
+      }
+
+      // Bookings
+      try {
+        const bkRes = await axios.get('https://sos911.onrender.com/api/bookings');
+        diagnostics.push({ name: 'Bookings API', status: 'ok', detail: `${bkRes.data.length} bookings loaded` });
+      } catch (err) {
+        diagnostics.push({ name: 'Bookings API', status: 'fail', detail: err.message });
+      }
+
+      // Geolocation
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true });
+        });
+        diagnostics.push({ name: 'Geolocation', status: 'ok', detail: `Lat: ${position.coords.latitude}, Lng: ${position.coords.longitude}` });
+      } catch (err) {
+        diagnostics.push({ name: 'Geolocation', status: 'fail', detail: err.message });
+      }
+
+      // QR code test
+      try {
+        const qrContainer = document.createElement('div');
+        qrContainer.id = 'qrTest';
+        await QRCode.toCanvas(qrContainer, 'TEST123', { width: 100 });
+        diagnostics.push({ name: 'QR Code Generation', status: 'ok', detail: 'QR Generated', element: qrContainer });
+      } catch (err) {
+        diagnostics.push({ name: 'QR Code Generation', status: 'fail', detail: err.message });
+      }
+
+      // Render results
+      diagContent.innerHTML = '';
+      diagnostics.forEach(d => {
+        const div = document.createElement('div');
+        div.classList.add('diag-section');
+        div.innerHTML = `<span class="diag-header">${d.name}:</span> 
+          <span class="${d.status === 'ok' ? 'status-ok' : 'status-fail'}">${d.status === 'ok' ? 'OK' : 'FAIL'}</span>
+          <div>${d.detail || ''}</div>`;
+        if (d.element) div.appendChild(d.element);
+        diagContent.appendChild(div);
+      });
+    });
+  </script>
 </body>
 </html>
