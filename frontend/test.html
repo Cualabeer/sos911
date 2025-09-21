@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mobile Mechanic Test Dashboard</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 20px; background: #f8f9fa; }
+h1 { color: #0d6efd; }
+section { margin-bottom: 40px; }
+table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+th { background-color: #e9ecef; }
+.success { color: green; }
+.fail { color: red; }
+button { padding: 10px 15px; margin-top: 10px; cursor: pointer; background: #0d6efd; color: #fff; border: none; border-radius: 5px; }
+button:hover { background: #0b5ed7; }
+.ticket { border: 2px dashed #0d6efd; padding: 15px; margin-top: 15px; width: 350px; }
+</style>
+</head>
+<body>
+
+<h1>Mobile Mechanic System Demo</h1>
+
+<section>
+  <h2>Database & API Status</h2>
+  <table>
+    <thead>
+      <tr><th>API</th><th>Status</th><th>Response</th></tr>
+    </thead>
+    <tbody id="statusResults"></tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Dummy Booking</h2>
+  <form id="bookingForm">
+    <label>Name: <input type="text" name="name" value="John Doe" required></label><br>
+    <label>Phone: <input type="text" name="phone" value="07123456789" required></label><br>
+    <label>Number Plate: <input type="text" name="plate" value="AB12 CDE" required></label><br>
+    <label>Service:
+      <select name="service" id="serviceSelect" required></select>
+    </label><br>
+    <input type="hidden" name="latitude">
+    <input type="hidden" name="longitude">
+    <button type="submit">Book & Generate Ticket</button>
+  </form>
+  <div id="ticketContainer"></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script>
+const endpoints = [
+  { name: 'DB Status', url: '/api/status' },
+  { name: 'Services', url: '/api/services' },
+  { name: 'Bookings', url: '/api/bookings' },
+  { name: 'Loyalty', url: '/api/loyalty' }
+];
+
+const statusEl = document.getElementById('statusResults');
+const serviceSelect = document.getElementById('serviceSelect');
+
+async function testEndpoints() {
+  for (let ep of endpoints) {
+    try {
+      const res = await fetch(ep.url);
+      const data = await res.json();
+      const status = res.ok ? '✅ Success' : '❌ Fail';
+      statusEl.innerHTML += `<tr>
+        <td>${ep.name}</td>
+        <td class="${res.ok ? 'success' : 'fail'}">${status}</td>
+        <td><pre>${JSON.stringify(data,null,2)}</pre></td>
+      </tr>`;
+      if (ep.name === 'Services' && res.ok) {
+        data.forEach(s => {
+          const option = document.createElement('option');
+          option.value = s.id;
+          option.textContent = s.name;
+          serviceSelect.appendChild(option);
+        });
+      }
+    } catch (err) {
+      statusEl.innerHTML += `<tr>
+        <td>${ep.name}</td>
+        <td class="fail">❌ Error</td>
+        <td>${err}</td>
+      </tr>`;
+    }
+  }
+}
+
+// Auto-detect location
+navigator.geolocation.getCurrentPosition(pos => {
+  document.querySelector('[name=latitude]').value = pos.coords.latitude;
+  document.querySelector('[name=longitude]').value = pos.coords.longitude;
+}, err => console.log('Location error:', err));
+
+document.getElementById('bookingForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const payload = Object.fromEntries(formData.entries());
+  
+  // Ensure plate is uppercase and formatted
+  payload.plate = payload.plate.toUpperCase().replace(/\s+/g,' ').trim();
+
+  try {
+    const res = await fetch('/api/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showTicket(data);
+    } else {
+      alert('Booking failed: ' + data.message);
+    }
+  } catch(err) { alert('Error: ' + err); }
+});
+
+function showTicket(booking) {
+  const container = document.getElementById('ticketContainer');
+  container.innerHTML = `
+    <div class="ticket">
+      <h3>Booking Ticket</h3>
+      <p><strong>Name:</strong> ${booking.name}</p>
+      <p><strong>Service:</strong> ${booking.service}</p>
+      <p><strong>Number Plate:</strong> ${booking.plate}</p>
+      <p><strong>Date:</strong> ${new Date(booking.created_at).toLocaleString()}</p>
+      <canvas id="qrCanvas"></canvas>
+    </div>
+  `;
+  QRCode.toCanvas(document.getElementById('qrCanvas'), JSON.stringify(booking), { width: 150 });
+}
+
+testEndpoints();
+</script>
+</body>
+</html>
