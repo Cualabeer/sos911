@@ -1,119 +1,181 @@
+import express from 'express';
+import pg from 'pg';
 import dotenv from 'dotenv';
+import cors from 'cors';
+import QRCode from 'qrcode';
+
 dotenv.config();
 
-import express from 'express';
-import cors from 'cors';
-import pg from 'pg';
-import QRCode from 'qrcode';
+const { Pool } = pg;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const { Pool } = pg;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Render PostgreSQL requirement
+// Health check / DB status
+app.get('/api/status', async (req, res) => {
+  try {
+    await pool.query('SELECT NOW()');
+    res.json({ db: 'connected', message: '✅ Backend is running and DB connected!' });
+  } catch (err) {
+    res.status(500).json({ db: 'error', message: `❌ Database not connected: ${err.message}` });
+  }
 });
 
-// Test DB connection
-pool.connect()
-  .then(() => console.log("✅ Backend is running and DB connected!"))
-  .catch(err => console.error("❌ Database connection error:", err));
-
-// --- Setup Tables and Dummy Data ---
+// Initialize DB: drop tables, create new tables, insert dummy data
 async function initDb() {
   try {
-    await pool.query(`DROP TABLE IF EXISTS bookings, customers, services, loyalty CASCADE;`);
-
+    // Drop tables if exist (order matters)
     await pool.query(`
-      CREATE TABLE customers(
+      DROP TABLE IF EXISTS loyalty;
+      DROP TABLE IF EXISTS bookings;
+      DROP TABLE IF EXISTS customers;
+      DROP TABLE IF EXISTS services;
+    `);
+
+    // Customers table
+    await pool.query(`
+      CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(100),
+        name VARCHAR(100) NOT NULL,
         email VARCHAR(100),
-        phone VARCHAR(20)
-      );
-      CREATE TABLE services(
-        id SERIAL PRIMARY KEY,
-        category VARCHAR(50),
-        name VARCHAR(100),
-        price NUMERIC
-      );
-      CREATE TABLE bookings(
-        id SERIAL PRIMARY KEY,
-        customer_id INT REFERENCES customers(id),
-        service_id INT REFERENCES services(id),
-        vehicle_number VARCHAR(20),
-        location VARCHAR(200),
-        latitude NUMERIC,
-        longitude NUMERIC,
-        qr_code TEXT,
+        phone VARCHAR(20),
         created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE loyalty(
-        id SERIAL PRIMARY KEY,
-        customer_id INT REFERENCES customers(id),
-        completed_jobs INT DEFAULT 0
       );
     `);
 
-    // Insert 30 example services in 5 categories
-    const categories = ['Oil & Fluids','Brakes','Engine','Electrical','Aircon'];
-    for(let c of categories){
-      for(let i=1;i<=6;i++){
-        await pool.query(`INSERT INTO services(category,name,price) VALUES($1,$2,$3)`,
-          [c, `${c} Service ${i}`, Math.floor(Math.random()*150)+50]);
-      }
-    }
+    // Services table
+    await pool.query(`
+      CREATE TABLE services (
+        id SERIAL PRIMARY KEY,
+        category VARCHAR(50),
+        name VARCHAR(100),
+        price NUMERIC(10,2)
+      );
+    `);
 
-    console.log("✅ Database initialized with dummy services!");
-  } catch(err){
-    console.error("❌ Database init error:", err);
+    // Bookings table
+    await pool.query(`
+      CREATE TABLE bookings (
+        id SERIAL PRIMARY KEY,
+        customer_id INT REFERENCES customers(id),
+        service_id INT REFERENCES services(id),
+        date TIMESTAMP,
+        location TEXT,
+        number_plate VARCHAR(10),
+        qr_code TEXT,
+        status VARCHAR(20) DEFAULT 'pending'
+      );
+    `);
+
+    // Loyalty table
+    await pool.query(`
+      CREATE TABLE loyalty (
+        id SERIAL PRIMARY KEY,
+        customer_id INT REFERENCES customers(id),
+        points INT DEFAULT 0
+      );
+    `);
+
+    // Insert dummy services
+    await pool.query(`
+      INSERT INTO services (category, name, price) VALUES
+      ('Engine', 'Oil Change', 50),
+      ('Engine', 'Spark Plug Replacement', 80),
+      ('Engine', 'Timing Belt', 200),
+      ('Brakes', 'Brake Pad Replacement', 120),
+      ('Brakes', 'Brake Disc Replacement', 180),
+      ('Electrical', 'Battery Replacement', 90),
+      ('Electrical', 'Alternator Check', 60),
+      ('Suspension', 'Shock Absorber Replacement', 150),
+      ('Suspension', 'Strut Replacement', 180),
+      ('Cooling', 'Radiator Replacement', 200),
+      ('Cooling', 'Coolant Flush', 70);
+    `);
+
+    console.log('✅ Database initialized with tables and dummy services');
+  } catch (err) {
+    console.error('❌ Database init error:', err);
   }
 }
 
-// Run initialization once
-initDb();
+// QR code generation
+async function generateQr(id) {
+  try {
+    return await QRCode.toDataURL(`BOOKING-${id}`);
+  } catch (err) {
+    console.error('Error generating QR code:', err);
+    return null;
+  }
+}
 
-// --- Routes ---
-app.get('/services', async (req,res)=>{
-  try{
-    const result = await pool.query('SELECT * FROM services ORDER BY category,id');
+// API endpoints
+
+// Get all services
+app.get('/api/services', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM services ORDER BY category, name');
     res.json(result.rows);
-  } catch(err){ res.status(500).json({error: err.message}); }
-});
-
-app.post('/book', async (req,res)=>{
-  const { customer_id, service_id, vehicle_number, location, latitude, longitude } = req.body;
-  if(!customer_id || !service_id || !vehicle_number || !location) 
-    return res.status(400).json({error:"Missing fields"});
-
-  try{
-    const qrData = `${customer_id}-${service_id}-${Date.now()}`;
-    const qr_code = await QRCode.toDataURL(qrData);
-
-    await pool.query(`
-      INSERT INTO bookings(customer_id,service_id,vehicle_number,location,latitude,longitude,qr_code)
-      VALUES($1,$2,$3,$4,$5,$6,$7)
-    `,[customer_id, service_id, vehicle_number.toUpperCase(), location, latitude, longitude, qr_code]);
-
-    res.json({success:true, qr_code});
-  } catch(err){
-    res.status(500).json({error: err.message});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Check DB status for frontend footer
-app.get('/dbstatus', async (req,res)=>{
-  try{
-    await pool.query('SELECT 1');
-    res.json({connected:true});
-  } catch(err){
-    res.json({connected:false, error: err.message});
+// Add new booking
+app.post('/api/bookings', async (req, res) => {
+  const { customer_name, email, phone, service_id, date, location, number_plate } = req.body;
+  if (!customer_name || !service_id || !date || !location || !number_plate) {
+    return res.status(400).json({ error: 'Missing fields' });
+  }
+
+  try {
+    const custRes = await pool.query(
+      'INSERT INTO customers (name, email, phone) VALUES ($1, $2, $3) RETURNING id',
+      [customer_name, email, phone]
+    );
+    const customer_id = custRes.rows[0].id;
+
+    const bookingRes = await pool.query(
+      'INSERT INTO bookings (customer_id, service_id, date, location, number_plate) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      [customer_id, service_id, date, location, number_plate.toUpperCase()]
+    );
+
+    const booking_id = bookingRes.rows[0].id;
+    const qr = await generateQr(booking_id);
+
+    await pool.query('UPDATE bookings SET qr_code=$1 WHERE id=$2', [qr, booking_id]);
+
+    res.json({ booking_id, qr });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(process.env.PORT || 3000, ()=>{
-  console.log(`🚀 Server running on port ${process.env.PORT || 3000}`);
+// List all bookings (for admin / mechanic)
+app.get('/api/bookings', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT b.id, c.name as customer_name, s.name as service_name, b.date, b.location, b.number_plate, b.qr_code, b.status
+      FROM bookings b
+      JOIN customers c ON b.customer_id = c.id
+      JOIN services s ON b.service_id = s.id
+      ORDER BY b.date DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, async () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  await initDb();
 });
