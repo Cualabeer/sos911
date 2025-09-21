@@ -3,211 +3,100 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOS Mechanics - Customer Booking</title>
+<title>SOS Mechanics - Medway</title>
 <style>
-  /* Golden ratio layout spacing */
-  body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background: #f9f9f9;
-    color: #333;
-  }
-  header {
-    text-align: center;
-    padding: 2rem 1rem;
-    background: #1E90FF;
-    color: white;
-    font-size: 2rem;
-  }
-  .container {
-    max-width: 900px;
-    margin: 2rem auto;
-    padding: 2rem;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-  }
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.618rem; /* golden ratio */
-  }
-  input, select, button, textarea {
-    padding: 1rem;
-    font-size: 1rem;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  button {
-    background: #1E90FF;
-    color: white;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-  }
-  button:hover { background: #187bcd; }
-  .loyalty-card {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 2rem;
-  }
-  .loyalty-slot {
-    flex: 1;
-    margin: 0 0.5rem;
-    height: 50px;
-    background: #eee;
-    border-radius: 4px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: bold;
-    color: #666;
-  }
-  .loyalty-slot.completed { background: gold; color: white; }
-  footer {
-    text-align: center;
-    padding: 1rem;
-    margin-top: 2rem;
-    background: #f0f0f0;
-  }
-  #map { height: 200px; width: 100%; margin-bottom: 1rem; border-radius: 4px; }
-  .error { color: red; font-weight: bold; }
-  .success { color: green; font-weight: bold; }
+  body { margin:0;font-family:sans-serif;background:#f8f9fa;color:#222; }
+  header{background:#0056b3;color:#fff;padding:2rem;text-align:center;}
+  section{padding:2rem;max-width:900px;margin:auto;}
+  h1,h2{margin-bottom:1rem;}
+  .service-list { display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem; }
+  .service-card{padding:1rem;border:1px solid #ddd;border-radius:8px;background:#fff;}
+  .faq-item{margin-bottom:1rem;}
+  input,select,button{padding:0.5rem;margin:0.5rem 0;width:100%;box-sizing:border-box;}
+  #bookingForm{display:flex;flex-direction:column;}
+  footer{background:#eee;text-align:center;padding:1rem;margin-top:2rem;}
+  #ticketPopup{display:none;position:fixed;top:10%;left:50%;transform:translateX(-50%);background:#fff;padding:2rem;border:2px solid #0056b3;border-radius:10px;z-index:1000;}
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
-<header>SOS Mechanics - Book a Service</header>
-<div class="container">
-  <form id="bookingForm">
-    <input type="text" name="name" id="name" placeholder="Full Name" required>
-    <input type="email" name="email" id="email" placeholder="Email" required>
-    <input type="tel" name="phone" id="phone" placeholder="Phone" required>
-    <input type="text" name="numberPlate" id="numberPlate" placeholder="Vehicle Number Plate" required>
-    <select name="service" id="service" required>
-      <option value="">Select Service</option>
-      <option value="oilChange">Oil Change</option>
-      <option value="brakes">Brakes</option>
-      <option value="battery">Battery</option>
-    </select>
-    <input type="date" name="date" id="date" required>
-    <input type="time" name="time" id="time" required>
-    <div id="map"></div>
-    <input type="hidden" name="latitude" id="latitude">
-    <input type="hidden" name="longitude" id="longitude">
-    <button type="submit">Book Service</button>
-    <div id="feedback"></div>
-  </form>
 
-  <div class="loyalty-card" id="loyaltyCard">
-    <div class="loyalty-slot" id="slot1">1</div>
-    <div class="loyalty-slot" id="slot2">2</div>
-    <div class="loyalty-slot" id="slot3">3</div>
-    <div class="loyalty-slot" id="slot4">4</div>
-    <div class="loyalty-slot" id="slot5">5</div>
-  </div>
+<header>
+  <h1>SOS Mechanics - Mobile Service Medway</h1>
+</header>
+
+<section>
+  <h2>Book Your Service</h2>
+  <form id="bookingForm">
+    <input type="text" id="name" placeholder="Your Name" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="tel" id="phone" placeholder="Phone" required>
+    <input type="text" id="vehicle" placeholder="Vehicle Number (UK)" required>
+    <input type="text" id="location" placeholder="Location" required>
+    <select id="service" required></select>
+    <button type="submit">Book Service</button>
+  </form>
+</section>
+
+<section>
+  <h2>Our Services</h2>
+  <div class="service-list" id="servicesContainer"></div>
+</section>
+
+<section>
+  <h2>FAQ</h2>
+  <div class="faq-item"><strong>Q:</strong> Do you come to my location? <br> <strong>A:</strong> Yes, we provide mobile service across Medway.</div>
+  <div class="faq-item"><strong>Q:</strong> How long will it take? <br> <strong>A:</strong> Usually 30–60 minutes per job depending on service.</div>
+</section>
+
+<div id="ticketPopup">
+  <h3>Your Service Ticket</h3>
+  <img id="qrImage" alt="QR Code"><br>
+  <button onclick="document.getElementById('ticketPopup').style.display='none'">Close</button>
 </div>
 
-<footer id="dbStatus">Checking database...</footer>
+<footer>
+  <span id="dbStatus">Checking database...</span>
+</footer>
 
 <script>
-  // --- Auto-detect location ---
-  let map, marker;
-  function initMap(lat, lon){
-    map = L.map('map').setView([lat, lon], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-    }).addTo(map);
-    marker = L.marker([lat, lon]).addTo(map)
-      .bindPopup('Detected location')
-      .openPopup();
-  }
+const backend = 'https://sos911.onrender.com';
 
-  navigator.geolocation.getCurrentPosition(pos=>{
-    document.getElementById('latitude').value = pos.coords.latitude;
-    document.getElementById('longitude').value = pos.coords.longitude;
-    initMap(pos.coords.latitude, pos.coords.longitude);
-  }, err=>{
-    console.log('Location not allowed', err);
-    initMap(51.386, 0.529); // default Medway
+// Load services
+fetch(backend+'/services').then(r=>r.json()).then(data=>{
+  const sel = document.getElementById('service');
+  const container = document.getElementById('servicesContainer');
+  data.forEach(s=>{
+    let opt = document.createElement('option'); opt.value=s.id; opt.text=s.category+' - '+s.name; sel.add(opt);
+    let card = document.createElement('div'); card.className='service-card'; card.innerHTML=`<strong>${s.category}</strong><br>${s.name}<br>£${s.price}`; container.appendChild(card);
   });
+});
 
-  // --- Number plate auto-format ---
-  const plateInput = document.getElementById('numberPlate');
-  plateInput.addEventListener('input', e=>{
-    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
-    if(val.length>2) val = val.slice(0,2)+' '+val.slice(2);
-    if(val.length>5) val = val.slice(0,5)+' '+val.slice(5);
-    e.target.value = val;
-  });
+// DB status
+fetch(backend+'/dbstatus').then(r=>r.json()).then(r=>{
+  document.getElementById('dbStatus').innerText = r.connected?'✅ Database connected':'❌ Database not connected';
+});
 
-  // --- Form submission ---
-  const form = document.getElementById('bookingForm');
-  form.addEventListener('submit', async e=>{
-    e.preventDefault();
-    const data = {
-      name: form.name.value,
-      email: form.email.value,
-      phone: form.phone.value,
-      numberPlate: form.numberPlate.value,
-      service: form.service.value,
-      date: form.date.value,
-      time: form.time.value,
-      latitude: form.latitude.value,
-      longitude: form.longitude.value
-    };
-
-    // Validation
-    if(!data.name || !data.email || !data.phone || !data.numberPlate || !data.service){
-      document.getElementById('feedback').innerHTML='<span class="error">Booking failed: Missing fields</span>';
-      return;
-    }
-
-    try{
-      const res = await fetch('https://sos911.onrender.com/bookings', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(data)
-      });
-      const result = await res.json();
-      if(result.success){
-        document.getElementById('feedback').innerHTML='<span class="success">Booking successful!</span>';
-        // Update loyalty card
-        updateLoyalty(result.loyaltyCompleted || 0);
-        // Show ticket popup
-        alert('Booking confirmed! Save this ticket for your mechanic visit.');
-      } else {
-        document.getElementById('feedback').innerHTML='<span class="error">Booking failed</span>';
-      }
-    } catch(err){
-      document.getElementById('feedback').innerHTML='<span class="error">Booking failed: '+err.message+'</span>';
-    }
-  });
-
-  // --- Loyalty card update ---
-  function updateLoyalty(count){
-    for(let i=1;i<=5;i++){
-      const slot = document.getElementById('slot'+i);
-      if(i<=count) slot.classList.add('completed');
-      else slot.classList.remove('completed');
-    }
+// Booking
+document.getElementById('bookingForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const payload = {
+    customer_id: 1, // temp demo
+    service_id: document.getElementById('service').value,
+    vehicle_number: document.getElementById('vehicle').value.toUpperCase(),
+    location: document.getElementById('location').value,
+    latitude: 0,
+    longitude:0
+  };
+  const resp = await fetch(backend+'/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data = await resp.json();
+  if(data.success){
+    document.getElementById('qrImage').src = data.qr_code;
+    document.getElementById('ticketPopup').style.display='block';
+  } else {
+    alert('Booking failed: '+(data.error||'Unknown'));
   }
-
-  // --- Check DB status ---
-  async function checkDb(){
-    try{
-      const res = await fetch('https://sos911.onrender.com/dbstatus');
-      const data = await res.json();
-      document.getElementById('dbStatus').innerText = data.connected ? "✅ Database connected" : "❌ Database not connected";
-    } catch(err){
-      document.getElementById('dbStatus').innerText = "❌ Database not connected: "+err.message;
-    }
-  }
-  checkDb();
+});
 </script>
+
 </body>
 </html>
