@@ -5,156 +5,143 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
 <style>
-  /* Reset & basic styling */
-  body, html {margin:0;padding:0;font-family:Arial,sans-serif;}
-  a {text-decoration:none;color:inherit;}
-  button {cursor:pointer;}
-  .hidden {display:none;}
-  /* Header */
-  header {background:#222;color:#fff;padding:1rem;display:flex;justify-content:space-between;align-items:center;}
-  header h1 {margin:0;font-size:1.5rem;}
-  header nav button {margin-left:0.5rem;}
-  /* Hero */
-  .hero {padding:2rem;text-align:center;background:#f4f4f4;}
-  .hero h2 {margin-bottom:1rem;}
-  .hero button {padding:0.75rem 1.5rem;font-size:1rem;background:#007BFF;color:#fff;border:none;border-radius:5px;}
-  /* Services Carousel */
-  .carousel-container {display:flex;overflow-x:auto;padding:1rem;gap:1rem;scroll-snap-type:x mandatory;}
-  .carousel-item {min-width:200px;flex:0 0 auto;scroll-snap-align:start;background:#fff;padding:1rem;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.15);}
-  .carousel-item h3 {margin-top:0;}
-  /* Booking Form */
-  .booking-form {background:#eee;padding:1rem;margin:1rem 0;border-radius:10px;}
-  .booking-form input, .booking-form select {width:100%;margin:0.5rem 0;padding:0.5rem;}
-  /* Modal */
-  .modal-bg {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:100;}
-  .modal {background:#fff;padding:2rem;border-radius:10px;max-width:400px;width:90%;}
-  /* Diagnostics Footer */
-  .diag-footer {position:fixed;bottom:0;width:100%;background:#222;color:#fff;max-height:80vh;overflow:auto;transition:transform 0.3s;transform:translateY(90%);}
-  .diag-footer.open {transform:translateY(0);}
-  .diag-footer-header {padding:1rem;cursor:pointer;background:#333;}
-  .diag-footer-content {padding:1rem;}
+  body { margin:0; font-family:sans-serif; background:#f4f4f4; }
+  header { background:#222; color:white; padding:1rem; text-align:center; }
+  .hero { background:#007BFF; color:white; padding:2rem; text-align:center; }
+  .hero button { padding:.7rem 1.2rem; margin-top:1rem; font-size:1rem; cursor:pointer; border:none; border-radius:4px; background:#ffc107; color:#222; }
+  .services { display:flex; overflow-x:auto; padding:1rem; gap:1rem; }
+  .service-card { min-width:250px; background:white; border-radius:8px; padding:1rem; box-shadow:0 2px 5px rgba(0,0,0,0.2); flex-shrink:0; }
+  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000; }
+  .modal-content { background:white; padding:2rem; border-radius:8px; width:90%; max-width:400px; position:relative; }
+  .modal-content h2 { margin-top:0; }
+  .close { position:absolute; top:10px; right:10px; cursor:pointer; font-weight:bold; }
+  .footer { position:fixed; bottom:0; width:100%; background:#222; color:white; text-align:center; padding:.5rem; cursor:pointer; }
+  .diag-panel { position:fixed; bottom:0; left:0; width:100%; height:0; background:white; overflow:auto; transition:height 0.3s ease; border-top-left-radius:12px; border-top-right-radius:12px; box-shadow:0 -2px 8px rgba(0,0,0,0.3); z-index:999; }
+  .diag-panel h3 { margin:1rem; }
+  .form-group { margin-bottom:1rem; }
+  .form-group input { width:100%; padding:.5rem; font-size:1rem; }
+  .btn { padding:.5rem 1rem; background:#007BFF; color:white; border:none; cursor:pointer; border-radius:4px; }
+  .booking-form { margin-top:1rem; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Mobile Mechanic</h1>
-  <nav>
-    <button id="loginBtn">Login</button>
-    <button id="registerBtn">Register</button>
-    <button id="profileBtn" class="hidden">Profile</button>
-  </nav>
+  <h1>Mobile Mechanic Booking</h1>
 </header>
 
 <section class="hero">
-  <h2>Book Your Car Service Instantly</h2>
-  <button id="bookNowBtn">Book Now</button>
+  <h2>Quick & Easy Booking</h2>
+  <p>Book your car service in seconds</p>
+  <button id="guestBookBtn">Book Now</button>
 </section>
 
-<section class="services-carousel">
-  <h2 style="text-align:center;">Our Services</h2>
-  <div class="carousel-container" id="servicesCarousel">
-    <!-- JS will populate services -->
-  </div>
+<section class="services" id="servicesContainer">
+  <!-- Service cards will populate here -->
 </section>
 
-<section class="booking-form hidden" id="bookingForm">
-  <h3>Book a Service</h3>
-  <select id="serviceSelect"></select>
-  <input type="text" id="location" placeholder="Enter your location">
-  <input type="text" id="postcode" placeholder="Postcode">
-  <button id="submitBooking">Confirm Booking</button>
-</section>
-
-<!-- Login Modal -->
-<div class="modal-bg hidden" id="loginModal">
-  <div class="modal">
-    <h3>Login</h3>
-    <input type="email" id="loginEmail" placeholder="Email">
-    <input type="password" id="loginPassword" placeholder="Password">
-    <button id="loginSubmit">Login</button>
-    <button onclick="closeModal('loginModal')">Cancel</button>
+<!-- Register Modal -->
+<div class="modal" id="registerModal">
+  <div class="modal-content">
+    <span class="close" id="registerClose">&times;</span>
+    <h2>Register</h2>
+    <div class="form-group"><input type="text" id="regName" placeholder="Name"></div>
+    <div class="form-group"><input type="email" id="regEmail" placeholder="Email"></div>
+    <div class="form-group"><input type="text" id="regPhone" placeholder="UK Phone (07XXXXXXXXX)"></div>
+    <div class="form-group"><input type="text" id="regRegPlate" placeholder="Car Reg Plate (AB12 CDE)"></div>
+    <div class="form-group"><input type="text" id="regAddress" placeholder="Address"></div>
+    <button class="btn" id="registerSubmit">Register</button>
+    <div id="regMsg"></div>
   </div>
 </div>
 
-<!-- Register Modal -->
-<div class="modal-bg hidden" id="registerModal">
-  <div class="modal">
-    <h3>Register</h3>
-    <input type="text" id="regName" placeholder="Full Name">
-    <input type="email" id="regEmail" placeholder="Email">
-    <input type="password" id="regPassword" placeholder="Password">
-    <input type="text" id="regPhone" placeholder="Phone">
-    <input type="text" id="regRegPlate" placeholder="Car Number Plate">
-    <input type="text" id="regAddress" placeholder="Address">
-    <button id="registerSubmit">Register</button>
-    <button onclick="closeModal('registerModal')">Cancel</button>
+<!-- Login Modal -->
+<div class="modal" id="loginModal">
+  <div class="modal-content">
+    <span class="close" id="loginClose">&times;</span>
+    <h2>Login</h2>
+    <div class="form-group"><input type="email" id="loginEmail" placeholder="Email"></div>
+    <div class="form-group"><input type="password" id="loginPassword" placeholder="Password"></div>
+    <button class="btn" id="loginSubmit">Login</button>
+    <div id="loginMsg"></div>
   </div>
 </div>
 
 <!-- Diagnostics Footer -->
-<div class="diag-footer" id="diagFooter">
-  <div class="diag-footer-header" onclick="toggleDiagFooter()">Diagnostics</div>
-  <div class="diag-footer-content" id="diagContent">
-    Loading diagnostics...
-  </div>
+<div class="footer" id="diagBtn">Check Diagnostics</div>
+<div class="diag-panel" id="diagPanel">
+  <h3>System Diagnostics</h3>
+  <div id="diagContent"></div>
 </div>
 
 <script>
-  // --- Utility functions ---
-  function openModal(id){document.getElementById(id).classList.remove('hidden');}
-  function closeModal(id){document.getElementById(id).classList.add('hidden');}
-  function toggleDiagFooter(){document.getElementById('diagFooter').classList.toggle('open');}
+// Utility
+function showModal(modal){ modal.style.display='flex'; }
+function closeModal(modal){ modal.style.display='none'; }
 
-  // --- Load Services ---
-  async function loadServices(){
-    const container = document.getElementById('servicesCarousel');
-    try{
-      const res = await fetch('/api/services');
-      const services = await res.json();
-      container.innerHTML = '';
-      const select = document.getElementById('serviceSelect');
-      select.innerHTML = '';
-      services.forEach(s=>{
-        container.innerHTML += `<div class="carousel-item"><h3>${s.name}</h3><p>${s.description}</p></div>`;
-        select.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-      });
-    } catch(e){console.error(e);}
-  }
+// Modals
+const registerModal = document.getElementById('registerModal');
+const loginModal = document.getElementById('loginModal');
 
-  // --- Load Diagnostics ---
-  async function loadDiagnostics(){
-    const diag = document.getElementById('diagContent');
-    try{
-      const res = await fetch('/api/diagnostics');
-      const data = await res.json();
-      diag.innerHTML = `<pre>${JSON.stringify(data,null,2)}</pre>`;
-    } catch(e){diag.innerText='Diagnostics failed';}
-  }
+document.getElementById('registerClose').onclick = ()=>closeModal(registerModal);
+document.getElementById('loginClose').onclick = ()=>closeModal(loginModal);
 
-  // --- Event Listeners ---
-  document.getElementById('loginBtn').addEventListener('click',()=>openModal('loginModal'));
-  document.getElementById('registerBtn').addEventListener('click',()=>openModal('registerModal'));
-  document.getElementById('bookNowBtn').addEventListener('click',()=>document.getElementById('bookingForm').classList.toggle('hidden'));
+// Services fetch & populate
+async function loadServices(){
+  try{
+    const res = await fetch('/api/services');
+    const data = await res.json();
+    const container = document.getElementById('servicesContainer');
+    container.innerHTML = '';
+    data.forEach(s=>{
+      const card = document.createElement('div');
+      card.className='service-card';
+      card.innerHTML=`<h3>${s.name}</h3><p>${s.description}</p>`;
+      container.appendChild(card);
+    });
+  }catch(err){ console.error(err); }
+}
+loadServices();
 
-  // --- Booking Submit ---
-  document.getElementById('submitBooking').addEventListener('click',async ()=>{
-    const booking = {
-      customer_id:1, // hardcoded for testing; integrate login
-      service_id:parseInt(document.getElementById('serviceSelect').value),
-      location:document.getElementById('location').value,
-      postcode:document.getElementById('postcode').value
-    };
-    try{
-      const res = await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(booking)});
-      const data = await res.json();
-      alert('Booked! QR generated.'); // later show fullscreen ticket
-    }catch(e){alert('Booking failed');}
-  });
+// Diagnostics
+const diagBtn = document.getElementById('diagBtn');
+const diagPanel = document.getElementById('diagPanel');
+diagBtn.onclick = async ()=>{
+  diagPanel.style.height='75%';
+  try{
+    const res = await fetch('/api/diagnostics');
+    const data = await res.json();
+    document.getElementById('diagContent').innerHTML=
+      `<pre>${JSON.stringify(data,null,2)}</pre>`;
+  }catch(err){ document.getElementById('diagContent').innerText=err.message; }
+};
 
-  loadServices();
-  loadDiagnostics();
+// Close panel on click outside
+diagPanel.addEventListener('click', e=>{ if(e.target===diagPanel) diagPanel.style.height='0'; });
+
+// Guest Book button opens register modal
+document.getElementById('guestBookBtn').onclick=()=>showModal(registerModal);
+
+// Register submission
+document.getElementById('registerSubmit').onclick=async ()=>{
+  const payload = {
+    name: document.getElementById('regName').value,
+    email: document.getElementById('regEmail').value,
+    phone: document.getElementById('regPhone').value,
+    reg_plate: document.getElementById('regRegPlate').value,
+    address: document.getElementById('regAddress').value
+  };
+  try{
+    const res = await fetch('/api/customers',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if(res.ok){ document.getElementById('regMsg').innerText='Registered!'; closeModal(registerModal); }
+    else{ document.getElementById('regMsg').innerText=data.error; }
+  }catch(err){ document.getElementById('regMsg').innerText=err.message; }
+};
 </script>
-
 </body>
 </html>
