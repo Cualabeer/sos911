@@ -1,3 +1,4 @@
+// backend/server.js
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -25,9 +26,13 @@ app.use(helmet());
 app.use(xss());
 
 // Rate limiter
-app.use(rateLimit({ windowMs: 60 * 1000, max: 60 }));
+app.use(rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: "Too many requests, try again later",
+}));
 
-// Serve frontend
+// Serve frontend folder permanently
 app.use(express.static("../frontend"));
 
 // Validation schemas
@@ -46,15 +51,17 @@ const bookingSchema = Joi.object({
   postcode: Joi.string().pattern(/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i).required(),
 });
 
-// Initialize DB with tables and dummy data
+// Initialize DB
 async function initDb() {
   const client = await pool.connect();
   try {
+    // Drop tables cascade
     await client.query(`DROP TABLE IF EXISTS loyalty CASCADE`);
     await client.query(`DROP TABLE IF EXISTS bookings CASCADE`);
     await client.query(`DROP TABLE IF EXISTS services CASCADE`);
     await client.query(`DROP TABLE IF EXISTS customers CASCADE`);
 
+    // Create tables
     await client.query(`
       CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
@@ -98,6 +105,7 @@ async function initDb() {
       );
     `);
 
+    // Dummy data
     await client.query(`INSERT INTO services (name, category, description) VALUES 
       ('Oil Change', 'Maintenance', 'Full synthetic oil change'),
       ('Brake Inspection', 'Maintenance', 'Check and adjust brakes'),
@@ -124,7 +132,7 @@ async function initDb() {
       (1,10),(2,5),(3,0)
     `);
 
-    console.log("✅ Database initialized!");
+    console.log("✅ Database initialized with dummy data!");
   } catch (err) {
     console.error("❌ Database init error:", err.message);
   } finally {
@@ -133,9 +141,7 @@ async function initDb() {
 }
 
 // Routes
-
-// Diagnostics
-app.get("/api/diagnostics", async (req,res)=>{
+app.get("/api/diagnostics", async (req, res) => {
   try {
     const client = await pool.connect();
     const services = await client.query("SELECT COUNT(*) FROM services");
@@ -143,55 +149,55 @@ app.get("/api/diagnostics", async (req,res)=>{
     const customers = await client.query("SELECT COUNT(*) FROM customers");
     client.release();
     res.json({
-      db_status:"connected",
+      db_status: "connected",
       services: services.rows[0].count,
       bookings: bookings.rows[0].count,
       customers: customers.rows[0].count
     });
-  } catch(err){
-    res.json({db_status:"failed",error:err.message});
+  } catch (err) {
+    res.json({ db_status: "failed", error: err.message });
   }
 });
 
 // Customer registration
-app.post("/api/customers", async (req,res)=>{
-  const {error,value} = customerSchema.validate(req.body);
-  if(error) return res.status(400).json({error:error.details[0].message});
+app.post("/api/customers", async (req, res) => {
+  const { error, value } = customerSchema.validate(req.body);
+  if (error) return res.status(400).json({ error: error.details[0].message });
 
   try {
-    const {name,email,phone,reg_plate,address} = value;
+    const { name, email, phone, reg_plate, address } = value;
     const result = await pool.query(
       "INSERT INTO customers (name,email,phone,reg_plate,address) VALUES ($1,$2,$3,$4,$5) RETURNING *",
-      [name,email,phone,reg_plate,address]
+      [name, email, phone, reg_plate, address]
     );
     res.json(result.rows[0]);
-  } catch(err){
-    res.status(500).json({error:err.message});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Booking with QR
-app.post("/api/bookings", async (req,res)=>{
-  const {error,value} = bookingSchema.validate(req.body);
-  if(error) return res.status(400).json({error:error.details[0].message});
+// Booking service
+app.post("/api/bookings", async (req, res) => {
+  const { error, value } = bookingSchema.validate(req.body);
+  if (error) return res.status(400).json({ error: error.details[0].message });
 
   try {
-    const {customer_id,service_id,location,postcode} = value;
+    const { customer_id, service_id, location, postcode } = value;
     const qr_data = `booking:${customer_id}:${service_id}:${Date.now()}`;
     const qr_code = await QRCode.toDataURL(qr_data);
 
     const result = await pool.query(
       "INSERT INTO bookings (customer_id,service_id,location,postcode,qr_code) VALUES ($1,$2,$3,$4,$5) RETURNING *",
-      [customer_id,service_id,location,postcode,qr_code]
+      [customer_id, service_id, location, postcode, qr_code]
     );
-    res.json({...result.rows[0], qr_code});
-  } catch(err){
-    res.status(500).json({error:err.message});
+    res.json({ ...result.rows[0], qr_code });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
 // Start server
-app.listen(PORT, async ()=>{
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   await initDb();
 });
