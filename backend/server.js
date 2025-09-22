@@ -14,11 +14,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// PostgreSQL pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
@@ -26,13 +28,14 @@ app.use(helmet());
 app.use(xss());
 
 // Rate limiter
-app.use(rateLimit({
+const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
   message: "Too many requests, try again later",
-}));
+});
+app.use(limiter);
 
-// Serve frontend folder permanently
+// Serve frontend
 app.use(express.static("../frontend"));
 
 // Validation schemas
@@ -51,7 +54,7 @@ const bookingSchema = Joi.object({
   postcode: Joi.string().pattern(/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i).required(),
 });
 
-// Initialize DB
+// Initialize database
 async function initDb() {
   const client = await pool.connect();
   try {
@@ -152,7 +155,7 @@ app.get("/api/diagnostics", async (req, res) => {
       db_status: "connected",
       services: services.rows[0].count,
       bookings: bookings.rows[0].count,
-      customers: customers.rows[0].count
+      customers: customers.rows[0].count,
     });
   } catch (err) {
     res.json({ db_status: "failed", error: err.message });
