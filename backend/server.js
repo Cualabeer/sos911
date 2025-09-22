@@ -7,14 +7,15 @@ import dotenv from "dotenv";
 import { Pool } from "pg";
 import QRCode from "qrcode";
 import Joi from "joi";
+import bcrypt from "bcrypt";
 import rateLimit from "express-rate-limit";
-import path from "path";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -34,22 +35,14 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// --- Setup __dirname for ES Modules ---
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Serve frontend
+app.use(express.static("../frontend"));
 
-// --- Serve frontend properly ---
-app.use(express.static(path.join(__dirname, "../frontend")));
-
-// --- Catch-all route for SPA ---
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/index.html"));
-});
-
-// Validation schemas (same as before)
+// Validation schemas
 const customerSchema = Joi.object({
   name: Joi.string().max(50).required(),
   email: Joi.string().email().required(),
+  password: Joi.string().min(6).required(),
   phone: Joi.string().pattern(/^07\d{9}$/).required(),
   reg_plate: Joi.string().pattern(/^[A-Z]{2}\d{2} [A-Z]{3}$/).required(),
   address: Joi.string().max(100).required(),
@@ -62,20 +55,23 @@ const bookingSchema = Joi.object({
   postcode: Joi.string().pattern(/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i).required(),
 });
 
-// Init DB function (same as previous)
+// Init DB
 async function initDb() {
   const client = await pool.connect();
   try {
+    // Drop existing tables
     await client.query(`DROP TABLE IF EXISTS loyalty CASCADE`);
     await client.query(`DROP TABLE IF EXISTS bookings CASCADE`);
     await client.query(`DROP TABLE IF EXISTS services CASCADE`);
     await client.query(`DROP TABLE IF EXISTS customers CASCADE`);
 
+    // Create tables
     await client.query(`
       CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
         name VARCHAR(50) NOT NULL,
         email VARCHAR(50) UNIQUE NOT NULL,
+        password TEXT NOT NULL,
         phone VARCHAR(20) NOT NULL,
         reg_plate VARCHAR(20) NOT NULL,
         address VARCHAR(100) NOT NULL,
@@ -114,31 +110,12 @@ async function initDb() {
       );
     `);
 
-    // Dummy data
-    await client.query(`INSERT INTO services (name, category, description) VALUES 
+    // Sample data
+    await client.query(`
+      INSERT INTO services (name, category, description) VALUES
       ('Oil Change', 'Maintenance', 'Full synthetic oil change'),
       ('Brake Inspection', 'Maintenance', 'Check and adjust brakes'),
       ('Battery Replacement', 'Repair', 'Replace old battery')
-    `);
-
-    await client.query(`INSERT INTO customers (name,email,phone,reg_plate,address) VALUES
-      ('John Doe','john@example.com','07123456789','AB12 CDE','Medway ME1 1AA'),
-      ('Jane Smith','jane@example.com','07234567890','CD34 EFG','Medway ME2 2BB'),
-      ('Bob Brown','bob@example.com','07345678901','EF56 HIJ','Medway ME3 3CC')
-    `);
-
-    await client.query(`INSERT INTO bookings (customer_id, service_id, location, postcode) VALUES
-      (1,1,'Medway ME1 1AA','ME1 1AA'),
-      (1,2,'Medway ME1 1AB','ME1 1AB'),
-      (2,1,'Medway ME2 2BB','ME2 2BB'),
-      (2,3,'Medway ME2 2BC','ME2 2BC'),
-      (3,2,'Medway ME3 3CC','ME3 3CC'),
-      (3,3,'Medway ME3 3CD','ME3 3CD'),
-      (1,3,'Medway ME1 1AC','ME1 1AC')
-    `);
-
-    await client.query(`INSERT INTO loyalty (customer_id, points) VALUES
-      (1,10),(2,5),(3,0)
     `);
 
     console.log("✅ Database initialized with dummy data!");
@@ -149,7 +126,7 @@ async function initDb() {
   }
 }
 
-// Routes (same as before)
+// Diagnostics endpoint
 app.get("/api/diagnostics", async (req,res)=>{
   try {
     const client = await pool.connect();
@@ -168,15 +145,17 @@ app.get("/api/diagnostics", async (req,res)=>{
   }
 });
 
-app.post("/api/customers", async (req,res)=>{
+// Customer registration
+app.post("/api/register", async (req,res)=>{
   const {error,value} = customerSchema.validate(req.body);
   if(error) return res.status(400).json({error:error.details[0].message});
 
   try {
-    const {name,email,phone,reg_plate,address} = value;
+    const {name,email,password,phone,reg_plate,address} = value;
+    const hashed = await bcrypt.hash(password,10);
     const result = await pool.query(
-      "INSERT INTO customers (name,email,phone,reg_plate,address) VALUES ($1,$2,$3,$4,$5) RETURNING *",
-      [name,email,phone,reg_plate,address]
+      "INSERT INTO customers (name,email,password,phone,reg_plate,address) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,name,email",
+      [name,email,hashed,phone,reg_plate,address]
     );
     res.json(result.rows[0]);
   } catch(err){
@@ -184,6 +163,22 @@ app.post("/api/customers", async (req,res)=>{
   }
 });
 
+// Customer login
+app.post("/api/login", async (req,res)=>{
+  const {email,password} = req.body;
+  try {
+    const userRes = await pool.query("SELECT * FROM customers WHERE email=$1",[email]);
+    if(userRes.rows.length===0) return res.status(400).json({error:"Invalid email or password"});
+    const user = userRes.rows[0];
+    const valid = await bcrypt.compare(password,user.password);
+    if(!valid) return res.status(400).json({error:"Invalid email or password"});
+    res.json({id:user.id,name:user.name,email:user.email});
+  } catch(err){
+    res.status(500).json({error:err.message});
+  }
+});
+
+// Book a service
 app.post("/api/bookings", async (req,res)=>{
   const {error,value} = bookingSchema.validate(req.body);
   if(error) return res.status(400).json({error:error.details[0].message});
@@ -192,7 +187,6 @@ app.post("/api/bookings", async (req,res)=>{
     const {customer_id,service_id,location,postcode} = value;
     const qr_data = `booking:${customer_id}:${service_id}:${Date.now()}`;
     const qr_code = await QRCode.toDataURL(qr_data);
-
     const result = await pool.query(
       "INSERT INTO bookings (customer_id,service_id,location,postcode,qr_code) VALUES ($1,$2,$3,$4,$5) RETURNING *",
       [customer_id,service_id,location,postcode,qr_code]
@@ -203,7 +197,6 @@ app.post("/api/bookings", async (req,res)=>{
   }
 });
 
-// Start server
 app.listen(PORT, async ()=>{
   console.log(`🚀 Server running on port ${PORT}`);
   await initDb();
