@@ -4,151 +4,134 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-  body {margin:0;font-family:Arial,sans-serif;background:#f4f4f4;}
-  header{background:#222;color:white;padding:1em;text-align:center;}
-  main{padding:1em;}
-  .service-card{background:white;margin:1em 0;padding:1em;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.2);}
-  .carousel{display:flex;overflow-x:auto;}
-  .carousel::-webkit-scrollbar{display:none;}
-  .btn{padding:0.5em 1em;background:#007bff;color:white;border:none;border-radius:5px;cursor:pointer;margin:0.3em;}
-  .btn:hover{background:#0056b3;}
-  .booking-history{margin-top:2em;}
-  .popup{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:none;justify-content:center;align-items:center;}
-  .popup-content{background:white;padding:2em;border-radius:10px;width:90%;max-width:400px;}
-  .close{float:right;cursor:pointer;font-weight:bold;}
-  footer{background:#222;color:white;padding:1em;text-align:center;margin-top:2em;}
+body {font-family: Arial, sans-serif; margin:0; padding:0;}
+.hero {background:#007bff; color:#fff; padding:60px 20px; text-align:center;}
+.hero h1 {font-size:2.5rem; margin-bottom:20px;}
+.hero button {font-size:1.2rem;}
+.carousel-item {text-align:center;}
+.service-card {margin:10px; padding:20px; border:1px solid #ddd; border-radius:8px; background:#fff;}
+.faq-section {margin:40px 0;}
+footer {position:fixed; bottom:0; width:100%; background:#f8f9fa; padding:10px; cursor:pointer;}
+#diagPanel {display:none; max-height:300px; overflow-y:auto; background:#e9ecef; padding:10px; border-top:1px solid #ccc;}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Mobile Mechanic Booking</h1>
-</header>
+<!-- Hero Section -->
+<section class="hero">
+  <h1>Quick Mobile Mechanic Service</h1>
+  <p>Book your service in seconds, anywhere in Medway</p>
+  <button class="btn btn-light" onclick="openBooking()">Book Now</button>
+</section>
 
-<main>
-  <div id="hero">
-    <h2>Quick Booking, Reliable Service</h2>
-    <p>Book your car service instantly. Loyalty points, QR tickets & more.</p>
-    <button class="btn" id="loginBtn">Login / Register</button>
+<!-- Services Carousel -->
+<section class="container my-5">
+  <h2 class="mb-3">Our Services</h2>
+  <div id="servicesCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-inner" id="servicesContainer"></div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#servicesCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#servicesCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon"></span>
+    </button>
   </div>
+</section>
 
-  <h3>Our Services</h3>
-  <div class="carousel" id="servicesCarousel"></div>
+<!-- FAQ Section -->
+<section class="container faq-section">
+  <h2>FAQ</h2>
+  <div class="accordion" id="faqAccordion">
+    <div class="accordion-item">
+      <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">How do I book?</button></h2>
+      <div id="faq1" class="accordion-collapse collapse"><div class="accordion-body">Click "Book Now", select service, and enter details.</div></div>
+    </div>
+    <div class="accordion-item">
+      <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">Do you come to my location?</button></h2>
+      <div id="faq2" class="accordion-collapse collapse"><div class="accordion-body">Yes, we service all Medway areas.</div></div>
+    </div>
+  </div>
+</section>
 
-  <div class="booking-history" id="bookingHistory"></div>
-</main>
-
-<div class="popup" id="authPopup">
-  <div class="popup-content">
-    <span class="close" id="popupClose">&times;</span>
-    <h3 id="popupTitle">Login</h3>
-    <form id="authForm">
-      <input type="email" id="email" placeholder="Email" required style="width:100%;margin:0.5em 0;padding:0.5em;">
-      <input type="password" id="password" placeholder="Password" required style="width:100%;margin:0.5em 0;padding:0.5em;">
-      <input type="text" id="name" placeholder="Full Name" style="width:100%;margin:0.5em 0;padding:0.5em;display:none;">
-      <input type="text" id="phone" placeholder="Phone" style="width:100%;margin:0.5em 0;padding:0.5em;display:none;">
-      <input type="text" id="reg_plate" placeholder="Car Reg Plate" style="width:100%;margin:0.5em 0;padding:0.5em;display:none;">
-      <input type="text" id="address" placeholder="Address" style="width:100%;margin:0.5em 0;padding:0.5em;display:none;">
-      <button type="submit" class="btn">Submit</button>
-      <button type="button" class="btn" id="toggleAuth">Switch to Register</button>
-    </form>
+<!-- Booking Modal -->
+<div class="modal fade" id="bookingModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-3">
+      <h5>Book Service</h5>
+      <form id="bookingForm">
+        <input class="form-control mb-2" name="name" placeholder="Full Name" required>
+        <input class="form-control mb-2" type="email" name="email" placeholder="Email" required>
+        <input class="form-control mb-2" name="phone" placeholder="Phone 07XXXXXXXXX" required>
+        <input class="form-control mb-2" name="reg_plate" placeholder="Reg Plate (AB12 CDE)" required>
+        <input class="form-control mb-2" name="address" placeholder="Address" required>
+        <select class="form-control mb-2" name="service_id" required></select>
+        <input class="form-control mb-2" name="postcode" placeholder="Postcode" required>
+        <button class="btn btn-primary w-100" type="submit">Confirm Booking</button>
+      </form>
+      <div id="qrTicket" class="text-center mt-3"></div>
+    </div>
   </div>
 </div>
 
-<footer>
-  &copy; 2025 Mobile Mechanic
-</footer>
+<!-- Footer Diagnostics -->
+<footer onclick="toggleDiag()">Diagnostics</footer>
+<div id="diagPanel"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const loginBtn = document.getElementById('loginBtn');
-const authPopup = document.getElementById('authPopup');
-const popupClose = document.getElementById('popupClose');
-const toggleAuth = document.getElementById('toggleAuth');
-const popupTitle = document.getElementById('popupTitle');
-const authForm = document.getElementById('authForm');
-
-let registerMode = false;
-
-loginBtn.onclick = () => authPopup.style.display = 'flex';
-popupClose.onclick = () => authPopup.style.display = 'none';
-
-toggleAuth.onclick = () => {
-  registerMode = !registerMode;
-  popupTitle.textContent = registerMode ? 'Register' : 'Login';
-  document.getElementById('name').style.display = registerMode ? 'block':'none';
-  document.getElementById('phone').style.display = registerMode ? 'block':'none';
-  document.getElementById('reg_plate').style.display = registerMode ? 'block':'none';
-  document.getElementById('address').style.display = registerMode ? 'block':'none';
-  toggleAuth.textContent = registerMode ? 'Switch to Login':'Switch to Register';
-};
-
-authForm.onsubmit = async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  if(registerMode){
-    const name = document.getElementById('name').value;
-    const phone = document.getElementById('phone').value;
-    const reg_plate = document.getElementById('reg_plate').value;
-    const address = document.getElementById('address').value;
-    const res = await fetch('/api/customers/register',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name,email,phone,reg_plate,address,password})
-    });
-    const data = await res.json();
-    if(data.error){alert(data.error);return;}
-    alert('Registered! You can now login.');
-    registerMode=false;
-    toggleAuth.click();
-  } else {
-    const res = await fetch('/api/customers/login',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,password})
-    });
-    const data = await res.json();
-    if(data.error){alert(data.error);return;}
-    authPopup.style.display='none';
-    loadBookings(data.id);
-  }
-};
-
+// Load services into carousel and select dropdown
 async function loadServices(){
-  const res = await fetch('/api/diagnostics');
-  const data = await res.json();
-  const carousel = document.getElementById('servicesCarousel');
-  const servicesList = [
-    {name:'Oil Change',desc:'Full synthetic oil change'},
-    {name:'Brake Inspection',desc:'Check and adjust brakes'},
-    {name:'Battery Replacement',desc:'Replace old battery'}
-  ];
-  servicesList.forEach(s=>{
-    const card=document.createElement('div');
-    card.className='service-card';
-    card.innerHTML=`<h4>${s.name}</h4><p>${s.desc}</p><button class="btn">Book Now</button>`;
-    carousel.appendChild(card);
-  });
+  try{
+    const res = await fetch('/api/services');
+    const services = await res.json();
+    const container = document.getElementById('servicesContainer');
+    const select = document.querySelector('[name="service_id"]');
+    services.forEach((s,i)=>{
+      const active = i===0?'active':'';
+      container.innerHTML+=`<div class="carousel-item ${active}"><div class="service-card"><h5>${s.name}</h5><p>${s.description}</p></div></div>`;
+      select.innerHTML+=`<option value="${s.id}">${s.name}</option>`;
+    });
+  }catch(e){ console.error(e); }
 }
 
-async function loadBookings(customerId){
-  const res = await fetch('/api/bookings/'+customerId);
-  const data = await res.json();
-  const history = document.getElementById('bookingHistory');
-  history.innerHTML='<h3>Your Bookings</h3>';
-  data.forEach(b=>{
-    const div = document.createElement('div');
-    div.className='service-card';
-    div.innerHTML=`<h4>${b.service_name}</h4><p>${b.service_desc}</p>
-    <p>Status: ${b.status}</p><img src="${b.qr_code}" style="width:100px;">`;
-    history.appendChild(div);
-  });
+// Booking modal
+function openBooking(){new bootstrap.Modal(document.getElementById('bookingModal')).show();}
+
+// Booking submission
+document.getElementById('bookingForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form));
+  try{
+    const res = await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const result = await res.json();
+    if(result.qr_code) document.getElementById('qrTicket').innerHTML=`<img src="${result.qr_code}" style="width:200px;">`;
+    alert('Booking confirmed!');
+  }catch(err){alert('Booking failed: '+err.message);}
+});
+
+// Toggle diagnostics panel
+async function toggleDiag(){
+  const panel = document.getElementById('diagPanel');
+  panel.style.display = panel.style.display==='block'?'none':'block';
+  if(panel.style.display==='block'){
+    try{
+      const res = await fetch('/api/diagnostics');
+      const diag = await res.json();
+      panel.innerHTML=`
+        <strong>Database:</strong> ${diag.db_status}<br>
+        <strong>Services:</strong> ${diag.services}<br>
+        <strong>Bookings:</strong> ${diag.bookings}<br>
+        <strong>Customers:</strong> ${diag.customers}
+      `;
+    }catch(e){panel.innerHTML='Diagnostics failed: '+e.message;}
+  }
 }
 
 // Initial load
 loadServices();
 </script>
-
 </body>
 </html>
