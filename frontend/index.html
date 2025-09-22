@@ -1,89 +1,146 @@
+<!-- frontend/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mechanic Customer Booking</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>Mobile Mechanic Booking</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-  body{padding:0;margin:0;font-family:sans-serif;}
-  #bookingForm{max-width:700px;margin:20px auto;padding:20px;border-radius:8px;box-shadow:0 0 10px #ccc;}
-  footer{position:fixed;bottom:0;width:100%;background:#f8f9fa;padding:10px;text-align:center;}
-  #ticketPopup{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:10px;z-index:10;box-shadow:0 0 20px #000;}
+  body { font-family: Arial, sans-serif; background:#f8f9fa; margin:0; padding:0;}
+  .container { max-width: 700px; margin: 30px auto; background: #fff; padding: 30px; border-radius:10px; box-shadow:0 0 15px rgba(0,0,0,0.1);}
+  h1 { text-align:center; margin-bottom:20px; }
+  .form-control { margin-bottom:15px; }
+  footer { text-align:center; padding:15px; font-size:0.9em; color:#555; }
+  #diagnostics { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); color:#fff; z-index:1000; overflow-y:auto; padding:20px; }
+  #diagnostics pre { white-space:pre-wrap; word-break:break-word; }
+  #diagClose { position:absolute; top:10px; right:20px; cursor:pointer; font-size:1.5em; }
 </style>
 </head>
 <body>
-
-<div id="bookingForm" class="bg-light">
-  <h2 class="text-center">Book Service</h2>
-  <form id="form">
-    <input type="number" id="customer_id" class="form-control my-2" placeholder="Customer ID" required>
-    <select id="service_id" class="form-select my-2" required></select>
-    <input type="text" id="lat" class="form-control my-2" placeholder="Latitude" readonly required>
-    <input type="text" id="lng" class="form-control my-2" placeholder="Longitude" readonly required>
-    <button type="submit" class="btn btn-primary w-100">Book</button>
+<div class="container">
+  <h1>Book Your Service</h1>
+  <form id="bookingForm">
+    <input type="text" class="form-control" id="name" placeholder="Full Name" required>
+    <input type="email" class="form-control" id="email" placeholder="Email" required>
+    <input type="tel" class="form-control" id="phone" placeholder="UK Phone Number" pattern="^07[0-9]{9}$" required>
+    <input type="text" class="form-control" id="numberPlate" placeholder="Vehicle Registration (UK)" pattern="^[A-Z]{2}[0-9]{2} [A-Z]{3}$" required>
+    <input type="text" class="form-control" id="address" placeholder="Address" required>
+    <input type="hidden" id="latitude">
+    <input type="hidden" id="longitude">
+    <select class="form-control" id="serviceSelect" required></select>
+    <button type="submit" class="btn btn-primary w-100">Book Service</button>
   </form>
 </div>
 
-<div id="ticketPopup">
-  <h3>Booking Ticket</h3>
-  <img id="qrCode" src="" alt="QR Code" class="img-fluid">
-  <button id="closeTicket" class="btn btn-secondary mt-2">Close</button>
-</div>
-
 <footer>
-  <span id="dbStatus">Checking DB...</span>
+  <span id="dbStatus">Database: checking...</span>
+  <button class="btn btn-sm btn-light" onclick="showDiagnostics()">Run Diagnostics</button>
 </footer>
 
+<div id="diagnostics">
+  <span id="diagClose" onclick="closeDiagnostics()">✖</span>
+  <h3>System Diagnostics</h3>
+  <pre id="diagOutput"></pre>
+</div>
+
 <script>
-async function fetchServices(){
-  const res = await fetch("/api/services");
-  const data = await res.json();
-  const sel = document.getElementById("service_id");
-  data.forEach(s=>{let opt=document.createElement("option");opt.value=s.id;opt.text=s.name;sel.add(opt);});
+async function fetchServices() {
+  try {
+    const res = await fetch('/api/services');
+    const services = await res.json();
+    const sel = document.getElementById('serviceSelect');
+    services.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = `${s.name} (${s.category})`;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error(e); }
 }
 
-async function checkDb(){
-  const res = await fetch("/api/db-status");
-  const data = await res.json();
-  document.getElementById("dbStatus").innerText = data.status==="connected"?"✅ Database connected":"❌ DB connection failed";
+async function checkDb() {
+  try {
+    const res = await fetch('/api/db-status');
+    const status = await res.json();
+    document.getElementById('dbStatus').textContent = status.status==='connected'? 'Database: ✅ connected':'Database: ❌ error';
+  } catch(e) {
+    document.getElementById('dbStatus').textContent = 'Database: ❌ error';
+  }
 }
 
-function getLocation(){
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(pos=>{
-      document.getElementById("lat").value = pos.coords.latitude;
-      document.getElementById("lng").value = pos.coords.longitude;
+function formatNumberPlate(e) {
+  let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(val.length>4) val = val.slice(0,4)+' '+val.slice(4,7);
+  e.target.value = val;
+}
+
+async function geolocate() {
+  if(navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('latitude').value = pos.coords.latitude;
+      document.getElementById('longitude').value = pos.coords.longitude;
+      reverseGeocode(pos.coords.latitude, pos.coords.longitude);
     });
   }
 }
 
-document.getElementById("form").onsubmit=async (e)=>{
+async function reverseGeocode(lat,lng){
+  try{
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+    const data = await res.json();
+    document.getElementById('address').value = data.display_name || '';
+  }catch(e){ console.error(e);}
+}
+
+document.getElementById('numberPlate').addEventListener('input', formatNumberPlate);
+
+document.getElementById('bookingForm').addEventListener('submit', async e=>{
   e.preventDefault();
-  const cid=document.getElementById("customer_id").value;
-  const sid=document.getElementById("service_id").value;
-  const lat=document.getElementById("lat").value;
-  const lng=document.getElementById("lng").value;
+  const payload = {
+    customer_id:1, // for demo purposes, replace with real login
+    service_id: document.getElementById('serviceSelect').value,
+    number_plate: document.getElementById('numberPlate').value,
+    address: document.getElementById('address').value,
+    latitude: document.getElementById('latitude').value,
+    longitude: document.getElementById('longitude').value
+  };
+  try{
+    const res = await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data = await res.json();
+    if(data.bookingId){
+      alert('Booking confirmed! QR code ready.');
+    } else alert('Booking failed: '+(data.error||'Unknown error'));
+  }catch(err){ alert('Booking failed: '+err.message); }
+});
 
-  const res = await fetch("/api/book",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({customer_id:cid, service_id:sid, lat, lng})
-  });
-  const data = await res.json();
-  if(data.qr_code){
-    document.getElementById("qrCode").src = data.qr_code;
-    document.getElementById("ticketPopup").style.display = "block";
-  }else{
-    alert("Booking failed: "+data.error);
-  }
-};
+async function showDiagnostics(){
+  const output = document.getElementById('diagOutput');
+  output.textContent = 'Running diagnostics...\n';
+  document.getElementById('diagnostics').style.display='block';
 
-document.getElementById("closeTicket").onclick=()=>document.getElementById("ticketPopup").style.display="none";
+  try{
+    const db = await fetch('/api/db-status').then(r=>r.json());
+    output.textContent += `Database: ${db.status==='connected'?'✅ connected':'❌ error'}\n`;
+    const services = await fetch('/api/services').then(r=>r.json());
+    output.textContent += `Services API: ${services.length} services loaded\n`;
+    const bookings = await fetch('/api/bookings').then(r=>r.json());
+    output.textContent += `Bookings API: ${bookings.length} bookings loaded\n`;
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        output.textContent += `Geolocation: Lat ${pos.coords.latitude}, Lng ${pos.coords.longitude}\n`;
+      });
+    }else output.textContent += 'Geolocation: ❌ not available\n';
+  }catch(e){ output.textContent += 'Diagnostics error: '+e.message+'\n'; }
+}
 
-fetchServices();
-checkDb();
-getLocation();
+function closeDiagnostics(){ document.getElementById('diagnostics').style.display='none'; }
+
+window.onload = ()=>{
+  fetchServices();
+  checkDb();
+  geolocate();
+}
 </script>
 </body>
 </html>
