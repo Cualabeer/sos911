@@ -2,31 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin Panel</title>
-  <link rel="stylesheet" href="css/main.css">
+  <title>Admin Panel | Medway Mechanics</title>
+  <meta name="description" content="Admin dashboard for managing services, bookings, mechanics, and customers.">
+  <meta name="keywords" content="admin mechanic system, service management, customer bookings, Medway">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="canonical" href="https://yourdomain.com/admin">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Medway Mechanics Admin Panel">
+  <meta property="og:description" content="Full admin control for services, customers, and mechanic accounts.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yourdomain.com/admin">
+  <meta property="og:image" content="https://yourdomain.com/assets/cover.jpg">
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Medway Mechanics Admin",
+    "url": "https://yourdomain.com/admin"
+  }
+  </script>
 </head>
 <body>
-  <div id="adminPanel">
-    <h1 class="text-center">Admin Panel</h1>
-
-    <section>
-      <h2>Manage Services</h2>
-      <button id="addServiceBtn">Add Service</button>
-      <ul id="serviceAdminList"></ul>
-    </section>
-
-    <section>
-      <h2>Customers</h2>
-      <ul id="customerList"></ul>
-    </section>
-  </div>
-
-  <!-- Diagnostics Preloader -->
-  <div id="diagPopup" class="diag-popup hidden">
-    <h2>Running System Diagnostics…</h2>
-    <div id="diagResults"></div>
-  </div>
-
-  <script src="js/admin.js"></script>
+  <h1>Admin Panel</h1>
+  <div id="adminTools"></div>
+  <script src="/scripts/admin.js"></script>
 </body>
 </html>
