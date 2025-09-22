@@ -1,48 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Book Your Car Service | Medway Mechanics</title>
-  <meta name="description" content="Easily book oil changes, brake repairs, and more with Medway Mobile Mechanics. Reliable and fast service in Medway.">
-  <meta name="keywords" content="Medway mechanic, car service, oil change, brake repair, MOT prep, mobile mechanic Medway">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="canonical" href="https://yourdomain.com/">
-
-  <!-- Open Graph -->
-  <meta property="og:title" content="Medway Mechanics – Car Service Booking">
-  <meta property="og:description" content="Book car servicing and repairs online. Fast, affordable mechanics in Medway.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://yourdomain.com/">
-  <meta property="og:image" content="https://yourdomain.com/assets/cover.jpg">
-
-  <!-- Structured Data -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "AutoRepair",
-    "name": "Medway Mobile Mechanics",
-    "image": "https://yourdomain.com/assets/cover.jpg",
-    "description": "Car servicing and repairs – Oil Change, Brake Service, Battery Replacement and more.",
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Medway",
-      "addressCountry": "UK"
-    },
-    "telephone": "+44 7123456789",
-    "url": "https://yourdomain.com/"
-  }
-  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOS Mechanics</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { font-family: Arial, sans-serif; }
+  .hero { background: #007bff; color: #fff; padding: 60px 20px; text-align:center; }
+  .services { padding: 40px 20px; }
+  .faq { padding: 40px 20px; }
+  .booking-form { max-width: 600px; margin: 40px auto; padding: 20px; background:#f8f9fa; border-radius:8px; }
+  .footer { background:#f1f1f1; padding:10px 20px; text-align:center; }
+  .diagnostics-popup { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); color:#fff; overflow:auto; display:none; z-index:9999; }
+  .diagnostics-content { max-width:800px; margin:50px auto; padding:20px; background:#212529; border-radius:8px; }
+  label { font-weight: bold; }
+</style>
 </head>
 <body>
-  <h1>Book Your Car Service</h1>
-  <form id="bookingForm">
-    <input type="text" id="name" placeholder="Your Name" required>
-    <input type="text" id="car" placeholder="Car Model" required>
-    <select id="service"></select>
-    <button type="submit">Book Now</button>
-  </form>
-  <div id="result"></div>
 
-  <script src="/scripts/customer.js"></script>
-</body>
-</html>
+<div class="hero">
+  <h1>SOS Mechanics</h1>
+  <p>Book your service in seconds</p>
+</div>
+
+<div class="services container">
+  <h2>Our Services</h2>
+  <div class="row row-cols-1 row-cols-md-3 g-4">
+    <div class="col"><div class="card p-3">Oil Change<br>High quality engine oil replacement</div></div>
+    <div class="col"><div class="card p-3">Brake Service<br>Brake pads & disc replacement</div></div>
+    <div class="col"><div class="card p-3">Battery Replacement<br>Fast and reliable battery service</div></div>
+  </div>
+</div>
+
+<div class="faq container">
+  <h2>FAQs</h2>
+  <div class="accordion" id="faqAccordion">
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingOne">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+          How do I book a service?
+        </button>
+      </h2>
+      <div id="collapseOne" class="accordion-collapse collapse">
+        <div class="accordion-body">Fill in the form with your car details and submit.</div>
+      </div>
+    </div>
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingTwo">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+          Can I trust your mechanics?
+        </button>
+      </h2>
+      <div id="collapseTwo" class="accordion-collapse collapse">
+        <div class="accordion-body">All our mechanics are certified and vetted for safety.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="booking-form container">
+  <h2>Book a Service</h2>
+  <form id="bookingForm">
+    <div class="mb-3">
+      <label for="name">Full Name*</label>
+      <input type="text" class="form-control" id="name" required>
+    </div>
+    <div class="mb-3">
+      <label for="phone">Phone UK*</label>
+      <input type="tel" class="form-control" id="phone" pattern="^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$" required>
+    </div>
+    <div class="mb-3">
+      <label for="reg">Number Plate UK*</label>
+      <input type="text" class="form-control" id="reg" pattern="^[A-Z]{2}[0-9]{2}\s?[A-Z]{3}$" required>
+    </div>
+    <div class="mb-3">
+      <label for="service">Service*</label>
+      <select class="form-control" id="service" required>
+        <option value="">Select Service</option>
+        <option value="Oil Change">Oil Change</option>
+        <option value="Brake Service">Brake Service</option>
+        <option value="Battery Replacement">Battery Replacement</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="address">Address*</label>
+      <input type="text" class="form-control" id="address" required>
+    </div>
+    <input type="hidden" id="lat">
+    <input type="hidden" id="lng">
+    <button type="submit" class="btn btn-primary w-100">Book Now</button>
+  </form>
+  <div id="bookingResult" class="mt-3"></div>
+</div>
+
+<div class="footer">
+  <button id="diagnoseBtn" class="btn btn-secondary btn-sm">Run Diagnostics</button>
+  <div id="dbStatus" class="mt-2"></div>
+</div>
+
+<div class="diagnostics-popup" id="diagnosticsPopup">
+  <div class="diagnostics-content">
+    <button class="btn btn-light mb-3" id="closeDiag">Close</button>
+    <h3>System Diagnostics</h3>
+    <pre id="diagOutput"></pre>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Auto Uppercase & format number plate
+  const regInput = document.get
