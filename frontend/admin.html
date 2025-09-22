@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <div id="adminPanel">
+    <h1 class="text-center">Admin Panel</h1>
+
+    <section>
+      <h2>Manage Services</h2>
+      <button id="addServiceBtn">Add Service</button>
+      <ul id="serviceAdminList"></ul>
+    </section>
+
+    <section>
+      <h2>Customers</h2>
+      <ul id="customerList"></ul>
+    </section>
+  </div>
+
+  <!-- Diagnostics Preloader -->
+  <div id="diagPopup" class="diag-popup hidden">
+    <h2>Running System Diagnostics…</h2>
+    <div id="diagResults"></div>
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>
