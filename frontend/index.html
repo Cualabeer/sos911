@@ -4,158 +4,189 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-  body { font-family: Arial,sans-serif; margin:0; padding:0; background:#f9f9f9; }
-  header { background:#003366; color:white; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
-  header h1 { margin:0; font-size:1.5rem; }
-  button { cursor:pointer; padding:.5rem 1rem; border:none; border-radius:5px; }
-  .hero { background:#0055aa; color:white; text-align:center; padding:4rem 1rem; }
-  .hero h2 { font-size:2rem; margin-bottom:1rem; }
-  .hero button { background:#ffcc00; font-weight:bold; }
-  .carousel { display:flex; overflow-x:auto; gap:1rem; padding:2rem 1rem; scroll-behavior:smooth; }
-  .service-card { min-width:250px; background:white; border-radius:10px; padding:1rem; flex:0 0 auto; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
-  .service-card h3 { margin:0 0 .5rem 0; }
-  .service-card p { margin:0 0 1rem 0; font-size:.9rem; }
-  .booking-form { background:white; margin:2rem 1rem; padding:1rem; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
-  .booking-form label { display:block; margin:.5rem 0 0.2rem 0; }
-  .booking-form input, .booking-form select { width:100%; padding:.5rem; margin-bottom:.5rem; border-radius:5px; border:1px solid #ccc; }
-  .diagnostics { position:fixed; bottom:0; left:0; right:0; background:white; border-top:2px solid #003366; max-height:0; overflow:hidden; transition:max-height .5s; z-index:999; }
-  .diagnostics.open { max-height:75%; overflow:auto; }
-  .diagnostics h4 { margin:1rem; }
-  .diagnostics pre { background:#f0f0f0; padding:1rem; margin:1rem; border-radius:5px; overflow:auto;}
-  .footer-btn { position:fixed; bottom:1rem; right:1rem; background:#003366; color:white; border-radius:50%; width:50px; height:50px; font-size:1.5rem; display:flex; justify-content:center; align-items:center; z-index:1000; }
-  .modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:none; justify-content:center; align-items:center; z-index:1001; }
-  .modal-content { background:white; padding:2rem; border-radius:10px; width:90%; max-width:400px; }
-  .modal-content h3 { margin-top:0; }
-  .modal-content input { width:100%; padding:.5rem; margin-bottom:.5rem; border-radius:5px; border:1px solid #ccc; }
-  .modal-content button { width:100%; margin-top:1rem; }
+  body { padding-top: 70px; }
+  .carousel-item { text-align: center; }
+  .diagnostics-panel {
+    position: fixed; bottom: 0; left: 0; width: 100%;
+    max-height: 75%; background: #fff; overflow-y: auto;
+    transform: translateY(100%); transition: transform 0.3s ease;
+    box-shadow: 0 -3px 10px rgba(0,0,0,0.2); z-index: 1050;
+  }
+  .diagnostics-panel.show { transform: translateY(0); }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Mobile Mechanic</h1>
-  <button id="loginBtn">Login/Register</button>
+<!-- Header -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">MobileMechanic</a>
+    <div class="d-flex">
+      <button class="btn btn-outline-light me-2" data-bs-toggle="modal" data-bs-target="#loginModal">Login</button>
+      <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#registerModal">Register</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<header class="container text-center my-5">
+  <h1>Fast, Reliable Mobile Mechanic Service</h1>
+  <p>Book a service or request a quote instantly. Available wherever you are.</p>
+  <button class="btn btn-primary btn-lg" onclick="document.getElementById('bookingForm').scrollIntoView({behavior:'smooth'})">Book Now</button>
 </header>
 
-<section class="hero">
-  <h2>Fast, Reliable Mobile Car Service</h2>
-  <button id="bookNowHero">Book Now</button>
-</section>
-
-<section class="carousel" id="servicesCarousel">
-  <!-- Service cards will populate here -->
-</section>
-
-<section class="booking-form" id="bookingSection">
-  <h3>Book Your Service</h3>
-  <form id="bookingForm">
-    <label for="customerEmail">Email</label>
-    <input type="email" id="customerEmail" required>
-    <label for="regPlate">Car Number Plate</label>
-    <input type="text" id="regPlate" required>
-    <label for="serviceSelect">Select Service</label>
-    <select id="serviceSelect"></select>
-    <label for="address">Address</label>
-    <input type="text" id="address" required>
-    <button type="submit">Book Service</button>
-  </form>
-</section>
-
-<div class="footer-btn" id="diagBtn">⚙️</div>
-<div class="diagnostics" id="diagnosticsPanel">
-  <h4>System Diagnostics</h4>
-  <pre id="diagOutput">Checking...</pre>
-  <button id="closeDiag">Close</button>
-</div>
-
-<div class="modal" id="loginModal">
-  <div class="modal-content">
-    <h3>Login / Register</h3>
-    <input type="email" id="loginEmail" placeholder="Email">
-    <input type="password" id="loginPassword" placeholder="Password">
-    <button id="loginSubmit">Login</button>
-    <button id="registerSubmit">Register</button>
-    <button id="closeLogin">Close</button>
+<!-- Services Carousel -->
+<div class="container my-5">
+  <h2 class="mb-4 text-center">Our Services</h2>
+  <div id="servicesCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-inner" id="servicesContainer">
+      <!-- JS will populate service cards here -->
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#servicesCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#servicesCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon"></span>
+    </button>
   </div>
 </div>
 
+<!-- Booking Form -->
+<div class="container my-5" id="bookingForm">
+  <h2>Book a Service</h2>
+  <form id="bookServiceForm" class="needs-validation" novalidate>
+    <div class="mb-3">
+      <label for="customerEmail" class="form-label">Email</label>
+      <input type="email" class="form-control" id="customerEmail" required>
+    </div>
+    <div class="mb-3">
+      <label for="customerPhone" class="form-label">Phone</label>
+      <input type="text" class="form-control" id="customerPhone" required pattern="^07\d{9}$">
+    </div>
+    <div class="mb-3">
+      <label for="regPlate" class="form-label">Car Registration</label>
+      <input type="text" class="form-control" id="regPlate" required pattern="^[A-Z]{2}\d{2} [A-Z]{3}$">
+    </div>
+    <div class="mb-3">
+      <label for="serviceSelect" class="form-label">Select Service</label>
+      <select class="form-select" id="serviceSelect" required></select>
+    </div>
+    <button type="submit" class="btn btn-success">Book Now</button>
+  </form>
+  <div id="bookingMessage" class="mt-3"></div>
+</div>
+
+<!-- Footer Diagnostics -->
+<footer class="bg-dark text-light text-center py-3">
+  <button class="btn btn-outline-light" id="diagBtn">Diagnostics</button>
+</footer>
+
+<!-- Diagnostics Panel -->
+<div class="diagnostics-panel" id="diagPanel">
+  <div class="p-3">
+    <h5>System Diagnostics</h5>
+    <button class="btn btn-sm btn-secondary mb-2" id="closeDiag">Close</button>
+    <pre id="diagOutput"></pre>
+  </div>
+</div>
+
+<!-- Login Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content p-3">
+      <h5>Login</h5>
+      <form id="loginForm">
+        <input type="email" class="form-control my-2" placeholder="Email" required>
+        <input type="password" class="form-control my-2" placeholder="Password" required>
+        <button class="btn btn-primary w-100">Login</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Register Modal -->
+<div class="modal fade" id="registerModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content p-3">
+      <h5>Register</h5>
+      <form id="registerForm">
+        <input type="text" class="form-control my-2" placeholder="Name" required>
+        <input type="email" class="form-control my-2" placeholder="Email" required>
+        <input type="password" class="form-control my-2" placeholder="Password" required>
+        <input type="password" class="form-control my-2" placeholder="Confirm Password" required>
+        <button class="btn btn-success w-100">Register</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-const servicesCarousel = document.getElementById('servicesCarousel');
-const serviceSelect = document.getElementById('serviceSelect');
-const diagBtn = document.getElementById('diagBtn');
-const diagnosticsPanel = document.getElementById('diagnosticsPanel');
-const diagOutput = document.getElementById('diagOutput');
-const closeDiag = document.getElementById('closeDiag');
-const bookingForm = document.getElementById('bookingForm');
-const loginBtn = document.getElementById('loginBtn');
-const loginModal = document.getElementById('loginModal');
-const closeLogin = document.getElementById('closeLogin');
+  // Populate services carousel
+  const services = [
+    {id:1, name:'Oil Change', description:'Full synthetic oil change'},
+    {id:2, name:'Brake Inspection', description:'Check and adjust brakes'},
+    {id:3, name:'Battery Replacement', description:'Replace old battery'}
+  ];
 
-// Fetch services from backend
-async function loadServices() {
-  try {
+  const servicesContainer = document.getElementById('servicesContainer');
+  services.forEach((s, i) => {
+    const active = i===0?'active':'';
+    const item = document.createElement('div');
+    item.className = 'carousel-item '+active;
+    item.innerHTML = `
+      <div class="card mx-auto" style="width: 18rem;">
+        <div class="card-body">
+          <h5 class="card-title">${s.name}</h5>
+          <p class="card-text">${s.description}</p>
+        </div>
+      </div>
+    `;
+    servicesContainer.appendChild(item);
+
+    // Add to select
+    const option = document.createElement('option');
+    option.value = s.id;
+    option.textContent = s.name;
+    document.getElementById('serviceSelect').appendChild(option);
+  });
+
+  // Booking form submit
+  document.getElementById('bookServiceForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const customerEmail = document.getElementById('customerEmail').value;
+    const customerPhone = document.getElementById('customerPhone').value;
+    const regPlate = document.getElementById('regPlate').value;
+    const serviceId = document.getElementById('serviceSelect').value;
+
+    try {
+      const res = await fetch('/api/bookings', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({customer_id:1, service_id:serviceId, location:'Test', postcode:'ME1 1AA'})
+      });
+      const data = await res.json();
+      document.getElementById('bookingMessage').textContent = '✅ Booking successful! QR ready.';
+    } catch(err){
+      document.getElementById('bookingMessage').textContent = '❌ Booking failed.';
+    }
+  });
+
+  // Diagnostics panel
+  const diagBtn = document.getElementById('diagBtn');
+  const diagPanel = document.getElementById('diagPanel');
+  const closeDiag = document.getElementById('closeDiag');
+
+  diagBtn.addEventListener('click', async ()=>{
+    diagPanel.classList.add('show');
     const res = await fetch('/api/diagnostics');
     const data = await res.json();
-    const servicesRes = await fetch('/api/services');
-    const servicesData = await servicesRes.json();
-    servicesData.forEach(s => {
-      const card = document.createElement('div');
-      card.classList.add('service-card');
-      card.innerHTML = `<h3>${s.name}</h3><p>${s.description}</p><button onclick="selectService(${s.id})">Book Now</button>`;
-      servicesCarousel.appendChild(card);
-      const option = document.createElement('option');
-      option.value = s.id;
-      option.textContent = s.name;
-      serviceSelect.appendChild(option);
-    });
-  } catch(e) {
-    console.error(e);
-  }
-}
+    document.getElementById('diagOutput').textContent = JSON.stringify(data,null,2);
+  });
 
-function selectService(id) {
-  serviceSelect.value = id;
-  window.scrollTo({top: bookingForm.offsetTop, behavior:'smooth'});
-}
-
-// Booking form submit
-bookingForm.addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const payload = {
-    customer_id: 1, // For testing, replace with logged in id
-    service_id: serviceSelect.value,
-    location: document.getElementById('address').value,
-    postcode: 'ME1 1AA'
-  };
-  try {
-    const res = await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const data = await res.json();
-    if(data.error) alert('Booking failed: '+data.error);
-    else alert('Booking successful! QR code will be generated.');
-  } catch(err) { alert('Booking failed: '+err.message); }
-});
-
-// Diagnostics panel
-diagBtn.addEventListener('click', async ()=>{
-  diagnosticsPanel.classList.add('open');
-  try {
-    const res = await fetch('/api/diagnostics');
-    const data = await res.json();
-    diagOutput.textContent = JSON.stringify(data,null,2);
-  } catch(err){
-    diagOutput.textContent = 'Error fetching diagnostics: '+err.message;
-  }
-});
-closeDiag.addEventListener('click', ()=>diagnosticsPanel.classList.remove('open'));
-
-// Login modal
-loginBtn.addEventListener('click', ()=>loginModal.style.display='flex');
-closeLogin.addEventListener('click', ()=>loginModal.style.display='none');
-
-// Initial load
-loadServices();
+  closeDiag.addEventListener('click', ()=> diagPanel.classList.remove('show'));
 </script>
-
 </body>
 </html>
