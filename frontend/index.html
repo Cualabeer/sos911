@@ -3,194 +3,247 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Mobile Mechanic Booking - Book services, check loyalty, view booking history.">
-<meta name="keywords" content="mobile mechanic, car service, booking, loyalty, vehicle repair, UK services">
-<title>Mobile Mechanic Booking</title>
+<meta name="description" content="Mobile Mechanic Booking - Quick booking, loyalty, service and car management">
+<title>Mobile Mechanic</title>
 <style>
-  /* Basic Reset & Typography */
-  * { box-sizing: border-box; margin:0; padding:0; font-family: Arial, sans-serif; }
-  body { background: #f9f9f9; color: #222; }
-  a { text-decoration:none; color: inherit; }
-  h1,h2,h3,h4 { margin-bottom: 0.5em; }
-  button { cursor:pointer; }
-
-  /* Container */
-  .container { max-width: 1200px; margin: auto; padding: 1rem; }
-
-  /* Hero Section */
-  .hero { background: linear-gradient(135deg,#4a90e2,#50e3c2); color:#fff; text-align:center; padding:3rem 1rem; border-radius:0.5rem; margin-bottom:2rem; }
-  .hero h1 { font-size:2.5rem; margin-bottom:1rem; }
-  .hero p { font-size:1.2rem; margin-bottom:1.5rem; }
-  .hero button { padding:0.8rem 1.5rem; margin:0.3rem; border:none; border-radius:0.3rem; background:#fff; color:#4a90e2; font-weight:bold; }
-
-  /* Services Carousel */
-  .services { display:flex; overflow-x:auto; gap:1rem; scroll-snap-type:x mandatory; padding-bottom:1rem; margin-bottom:2rem; }
-  .service-card { min-width:250px; background:#fff; padding:1rem; border-radius:0.5rem; flex:0 0 auto; scroll-snap-align:start; box-shadow:0 2px 8px rgba(0,0,0,0.1);}
-  .service-card h3 { font-size:1.2rem; margin-bottom:0.5rem; }
-  .service-card p { font-size:0.95rem; margin-bottom:0.5rem; }
-  .service-card button { background:#4a90e2; color:#fff; border:none; padding:0.5rem 1rem; border-radius:0.3rem; }
-
-  /* FAQ Accordion */
-  .faq-item { margin-bottom:1rem; border-radius:0.3rem; overflow:hidden; }
-  .faq-question { background:#eee; padding:0.8rem; cursor:pointer; }
-  .faq-answer { background:#fff; padding:0.8rem; display:none; }
-
-  /* Modal */
-  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000; }
-  .modal-content { background:#fff; padding:1.5rem; border-radius:0.5rem; max-width:400px; width:90%; position:relative; }
-  .close { position:absolute; top:0.5rem; right:0.5rem; font-size:1.5rem; cursor:pointer; }
-
-  /* Profile & Booking Table */
-  .dashboard { margin-top:2rem; }
-  table { width:100%; border-collapse:collapse; }
-  th, td { padding:0.8rem; border:1px solid #ddd; text-align:left; }
-  th { background:#f0f0f0; }
-
-  /* QR Ticket */
-  .ticket { text-align:center; padding:1rem; border:1px solid #ddd; border-radius:0.5rem; background:#fff; margin:1rem auto; max-width:300px; }
-  .ticket img { width:100%; max-width:250px; }
-
-  /* Responsive */
-  @media (max-width:768px){ .hero h1{font-size:2rem;} }
+  * {box-sizing:border-box; margin:0; padding:0; font-family:Arial,sans-serif;}
+  body {background:#f5f5f5; color:#333;}
+  header, footer {background:#222; color:#fff; padding:1rem;}
+  header h1 {font-size:1.8rem;}
+  nav {margin-top:0.5rem;}
+  nav a {color:#fff; margin-right:1rem; text-decoration:none;}
+  main {padding:1rem;}
+  section {margin-bottom:2rem;}
+  h2 {margin-bottom:1rem; font-size:1.5rem;}
+  .services-carousel {display:flex; overflow-x:auto; gap:1rem; padding-bottom:1rem;}
+  .service-card {min-width:200px; background:#fff; border-radius:0.5rem; padding:1rem; box-shadow:0 0 8px rgba(0,0,0,0.1);}
+  .service-card h3 {margin-bottom:0.5rem;}
+  form input, form select, form button {display:block; width:100%; margin-bottom:0.5rem; padding:0.5rem; border-radius:0.25rem; border:1px solid #ccc;}
+  form button {background:#007bff; color:#fff; border:none; cursor:pointer;}
+  form button:hover {background:#0056b3;}
+  .modal {position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;display:none;}
+  .modal-content {background:#fff; padding:1rem; border-radius:0.5rem; max-width:400px; width:90%;}
+  .close {float:right; cursor:pointer; font-weight:bold;}
+  table {width:100%; border-collapse:collapse;}
+  table th, table td {border:1px solid #ccc; padding:0.5rem; text-align:left;}
+  @media(max-width:600px){.services-carousel{flex-direction:column;}}
 </style>
 </head>
 <body>
-<div class="container">
 
-  <!-- Hero -->
-  <section class="hero">
-    <h1>Mobile Mechanic Booking</h1>
-    <p>Book your car service quickly in your area.</p>
-    <button id="btn-login">Login/Register</button>
-    <button id="btn-view-services">View Services</button>
+<header>
+  <h1>Mobile Mechanic</h1>
+  <nav>
+    <a href="#services">Services</a>
+    <a href="#booking">Book Now</a>
+    <a href="#faq">FAQ</a>
+    <a href="#" id="loginBtn">Login/Register</a>
+  </nav>
+</header>
+
+<main>
+  <section id="hero">
+    <h2>Fast, Reliable Mobile Mechanic Services</h2>
+    <p>Book your car service in seconds. QR booking for hassle-free appointments.</p>
+    <button onclick="scrollToBooking()">Book Your Service</button>
   </section>
 
-  <!-- Services Carousel -->
-  <section class="services" id="services-carousel">
-    <!-- Cards will be injected here -->
+  <section id="services">
+    <h2>Our Services</h2>
+    <div class="services-carousel" id="servicesList"></div>
   </section>
 
-  <!-- FAQ -->
-  <section class="faq">
-    <h2>Frequently Asked Questions</h2>
-    <div class="faq-item">
-      <div class="faq-question">How do I book a service?</div>
-      <div class="faq-answer">Simply register/login, select a service, and confirm booking. QR ticket will be generated.</div>
+  <section id="booking">
+    <h2>Book a Service</h2>
+    <div id="currentCarSection" style="margin-bottom:1rem; display:none;">
+      <h3>Current Car:</h3>
+      <p id="currentCarInfo"></p>
+      <button onclick="showAddCar()">Add / Switch Car</button>
     </div>
-    <div class="faq-item">
-      <div class="faq-question">Do you cover my area?</div>
-      <div class="faq-answer">We operate across Medway and surrounding postcodes.</div>
-    </div>
-    <div class="faq-item">
-      <div class="faq-question">Can I add multiple cars?</div>
-      <div class="faq-answer">Yes, customers can register multiple vehicles with their number plates.</div>
-    </div>
+    <form id="addCarForm" style="display:none;">
+      <input type="text" id="newRegPlate" placeholder="Reg Plate (AA12 ABC)" pattern="^[A-Z]{2}\d{2} [A-Z]{3}$" required/>
+      <input type="text" id="newModel" placeholder="Car Model" required/>
+      <input type="number" id="newYear" placeholder="Year" min="1990" max="2025" required/>
+      <button type="submit">Save Car</button>
+    </form>
+    <form id="bookingForm">
+      <input type="text" id="name" placeholder="Full Name" required />
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="text" id="phone" placeholder="UK Phone 07..." pattern="^07\d{9}$" required />
+      <input type="text" id="reg_plate" placeholder="Car Reg Plate" pattern="^[A-Z]{2}\d{2} [A-Z]{3}$" required />
+      <input type="text" id="address" placeholder="Address" required />
+      <select id="service">
+        <option value="">Select Service</option>
+      </select>
+      <button type="submit">Book Now</button>
+    </form>
   </section>
 
-  <!-- Dashboard for logged-in users -->
-  <section class="dashboard" id="dashboard" style="display:none;">
-    <h2>Welcome, <span id="customer-name"></span></h2>
-    <h3>Your Cars</h3>
-    <ul id="customer-cars"></ul>
+  <section id="dashboard" style="display:none;">
+    <h2>Your Dashboard</h2>
+    <div id="loyaltyPoints">Loyalty Points: <span>0</span></div>
     <h3>Booking History</h3>
-    <table>
-      <thead><tr><th>Service</th><th>Date</th><th>Status</th><th>QR Ticket</th></tr></thead>
-      <tbody id="booking-history"></tbody>
+    <table id="bookingHistory">
+      <thead><tr><th>Service</th><th>Date</th><th>Status</th><th>QR</th></tr></thead>
+      <tbody></tbody>
     </table>
-    <h3>Loyalty Points: <span id="loyalty-points">0</span></h3>
+    <h3>Your Cars</h3>
+    <ul id="carsList"></ul>
   </section>
-</div>
 
-<!-- Login/Register Modal -->
-<div class="modal" id="modal-login">
+  <section id="faq">
+    <h2>FAQ</h2>
+    <ul>
+      <li>Do you come to my location? Yes, anywhere in Medway.</li>
+      <li>What payment methods? Card, cash, or bank transfer.</li>
+      <li>Can I book as a guest? Yes, no login required.</li>
+      <li>How do I get my QR ticket? Generated instantly after booking.</li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <p>Mobile Mechanic © 2025 | <span id="diagnosticsBtn">Run Diagnostics</span></p>
+</footer>
+
+<div class="modal" id="loginModal">
   <div class="modal-content">
-    <span class="close" id="close-login">&times;</span>
+    <span class="close" onclick="closeLogin()">&times;</span>
     <h2>Login / Register</h2>
-    <input type="email" id="login-email" placeholder="Email" style="width:100%;margin-bottom:0.5rem;">
-    <input type="password" id="login-password" placeholder="Password" style="width:100%;margin-bottom:0.5rem;">
-    <button id="btn-submit-login" style="width:100%;">Submit</button>
-  </div>
-</div>
-
-<!-- Booking Modal -->
-<div class="modal" id="modal-booking">
-  <div class="modal-content">
-    <span class="close" id="close-booking">&times;</span>
-    <h2>Booking Confirmation</h2>
-    <div id="booking-details"></div>
-    <div class="ticket" id="qr-ticket"></div>
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" required />
+      <input type="password" id="loginPassword" placeholder="Password" required />
+      <button type="submit">Login</button>
+    </form>
+    <p>Or <a href="#" onclick="showRegister()">Register</a></p>
+    <form id="registerForm" style="display:none;">
+      <input type="text" id="regName" placeholder="Full Name" required />
+      <input type="email" id="regEmail" placeholder="Email" required />
+      <input type="password" id="regPassword" placeholder="Password" required />
+      <input type="password" id="regPassword2" placeholder="Confirm Password" required />
+      <button type="submit">Register</button>
+    </form>
   </div>
 </div>
 
 <script>
-const services = [
-  {id:1,name:'Oil Change',desc:'Full synthetic oil change',category:'Maintenance',price:50},
-  {id:2,name:'Brake Inspection',desc:'Check and adjust brakes',category:'Maintenance',price:30},
-  {id:3,name:'Battery Replacement',desc:'Replace old battery',category:'Repair',price:70},
-  // Add more services as needed
-];
+const API_BASE="/api";
+const servicesList = document.getElementById('servicesList');
+const serviceSelect = document.getElementById('service');
+const carsList = document.getElementById('carsList');
+let currentCar = null;
 
-// Render Services
-const servicesCarousel = document.getElementById('services-carousel');
-services.forEach(s=>{
-  const card = document.createElement('div');
-  card.className='service-card';
-  card.innerHTML=`<h3>${s.name}</h3><p>${s.desc}</p><p>Estimate: £${s.price}</p><button data-id="${s.id}">Book Now</button>`;
-  servicesCarousel.appendChild(card);
-});
+async function loadServices(){
+  const res = await fetch(`${API_BASE}/services`);
+  const services = await res.json();
+  services.forEach(s=>{
+    const card=document.createElement('div');
+    card.className='service-card';
+    card.innerHTML=`<h3>${s.name}</h3><p>${s.description||''}</p>`;
+    servicesList.appendChild(card);
+    const opt=document.createElement('option');
+    opt.value=s.id; opt.text=s.name;
+    serviceSelect.add(opt);
+  });
+}
+loadServices();
 
-// FAQ toggle
-document.querySelectorAll('.faq-question').forEach(q=>{
-  q.addEventListener('click',()=>{ q.nextElementSibling.style.display=q.nextElementSibling.style.display==='block'?'none':'block'; });
-});
+function scrollToBooking(){document.getElementById('booking').scrollIntoView({behavior:'smooth'});}
+const loginModal=document.getElementById('loginModal');
+document.getElementById('loginBtn').onclick=()=>loginModal.style.display='flex';
+function closeLogin(){loginModal.style.display='none';}
+function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('registerForm').style.display='block';}
 
-// Modals
-const modalLogin=document.getElementById('modal-login');
-const modalBooking=document.getElementById('modal-booking');
-document.getElementById('btn-login').onclick=()=>modalLogin.style.display='flex';
-document.getElementById('close-login').onclick=()=>modalLogin.style.display='none';
-document.getElementById('close-booking').onclick=()=>modalBooking.style.display='none';
+function showAddCar(){document.getElementById('addCarForm').style.display='block';}
 
-// Dummy login simulation
-let currentCustomer=null;
-document.getElementById('btn-submit-login').onclick=()=>{
-  const email=document.getElementById('login-email').value;
-  if(!email){alert('Enter email'); return;}
-  currentCustomer={id:1,name:'John Doe',email:email,cars:['AB12 CDE']};
-  modalLogin.style.display='none';
-  showDashboard();
+// Add Car
+document.getElementById('addCarForm').onsubmit=async e=>{
+  e.preventDefault();
+  const car={reg_plate:document.getElementById('newRegPlate').value,model:document.getElementById('newModel').value,year:document.getElementById('newYear').value};
+  currentCar=car;
+  updateCurrentCar();
+  document.getElementById('addCarForm').reset(); document.getElementById('addCarForm').style.display='none';
+  alert('Car saved');
 };
 
-function showDashboard(){
-  document.getElementById('dashboard').style.display='block';
-  document.getElementById('customer-name').innerText=currentCustomer.name;
-  const carsList=document.getElementById('customer-cars');
-  carsList.innerHTML='';
-  currentCustomer.cars.forEach(c=>{
-    const li=document.createElement('li'); li.innerText=c; carsList.appendChild(li);
-  });
-  // Dummy booking history
-  const bookings=[{service:'Oil Change',date:'2025-09-22',status:'Pending',qr:'QR12345'}];
-  const tbody=document.getElementById('booking-history'); tbody.innerHTML='';
-  bookings.forEach(b=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${b.service}</td><td>${b.date}</td><td>${b.status}</td><td><button onclick="alert('Show QR: ${b.qr}')">View QR</button></td>`;
-    tbody.appendChild(tr);
-  });
-  document.getElementById('loyalty-points').innerText='10';
+function updateCurrentCar(){
+  if(currentCar){
+    document.getElementById('currentCarSection').style.display='block';
+    document.getElementById('currentCarInfo').textContent=`${currentCar.model} (${currentCar.year}) - ${currentCar.reg_plate}`;
+    document.getElementById('reg_plate').value=currentCar.reg_plate;
+  }
 }
 
-// Booking buttons
-document.querySelectorAll('.service-card button').forEach(btn=>{
-  btn.onclick=()=>{
-    if(!currentCustomer){alert('Login first'); return;}
-    const serviceId=btn.dataset.id;
-    const service=services.find(s=>s.id==serviceId);
-    document.getElementById('booking-details').innerHTML=`<p>Service: ${service.name}</p><p>Estimate: £${service.price}</p>`;
-    document.getElementById('qr-ticket').innerHTML=`<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=booking:${currentCustomer.id}:${service.id}">`;
-    modalBooking.style.display='flex';
+// Booking
+document.getElementById('bookingForm').onsubmit=async e=>{
+  e.preventDefault();
+  const data={
+    name: document.getElementById('name').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    reg_plate: document.getElementById('reg_plate').value.trim(),
+    address: document.getElementById('address').value.trim(),
+    service_id: document.getElementById('service').value
   };
-});
+  const res = await fetch(`${API_BASE}/bookings/guest`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const booking=await res.json();
+  if(res.ok){
+    const qrModal=document.createElement('div'); qrModal.className='modal';
+    qrModal.style.display='flex';
+    qrModal.innerHTML=`<div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Your Booking QR</h3>
+      <img src="${booking.qr_code}" alt="QR Ticket"/>
+    </div>`;
+    document.body.appendChild(qrModal);
+    qrModal.querySelector('.close').onclick=()=>qrModal.remove();
+  }else alert(booking.error || 'Booking failed');
+};
+
+// Login/Register (simplified)
+document.getElementById('loginForm').onsubmit=async e=>{
+  e.preventDefault();
+  const res=await fetch(`${API_BASE}/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPassword').value})});
+  const user=await res.json();
+  if(res.ok){alert('Logged in!');closeLogin();showDashboard(user);}
+  else alert(user.error||'Login failed');
+};
+document.getElementById('registerForm').onsubmit=async e=>{
+  e.preventDefault();
+  const p1=document.getElementById('regPassword').value,p2=document.getElementById('regPassword2').value;
+  if(p1!==p2){alert('Passwords do not match');return;}
+  const res=await fetch(`${API_BASE}/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('regName').value,email:document.getElementById('regEmail').value,password:p1})});
+  const user=await res.json();
+  if(res.ok){alert('Registered!');closeLogin();showDashboard(user);}
+  else alert(user.error||'Registration failed');
+};
+
+function showDashboard(user){
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('loyaltyPoints').querySelector('span').textContent=user.loyalty || 0;
+  const tbody=document.getElementById('bookingHistory').querySelector('tbody');
+  tbody.innerHTML='';
+  user.bookings.forEach(b=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${b.service}</td><td>${new Date(b.date).toLocaleDateString()}</td><td>${b.status}</td><td><img src="${b.qr_code}" width="50"/></td>`;
+    tbody.appendChild(tr);
+  });
+  // Cars list
+  carsList.innerHTML='';
+  user.cars.forEach(c=>{
+    const li=document.createElement('li');
+    li.textContent=`${c.model} (${c.year}) - ${c.reg_plate}`;
+    carsList.appendChild(li);
+  });
+}
+
+// Diagnostics ping
+document.getElementById('diagnosticsBtn').onclick=async ()=>{
+  const res=await fetch(`${API_BASE}/diagnostics`);
+  const data=await res.json();
+  alert(JSON.stringify(data,null,2));
+};
 </script>
+
 </body>
 </html>
