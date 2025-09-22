@@ -1,7 +1,6 @@
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import pg from 'pg';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import QRCode from 'qrcode';
 
@@ -9,147 +8,157 @@ dotenv.config();
 
 const { Pool } = pg;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const app = express();
+app.use(cors());
 app.use(express.json());
 
-// Serve frontend folder
-app.use(express.static(path.join(__dirname, '../frontend')));
-
-// PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false } // for Render Postgres
 });
 
-// --- DB INIT ---
+// Initialize DB: drop all tables, recreate, add dummy data
 async function initDb() {
   try {
-    // Drop all tables cascade
+    await pool.query(`DROP TABLE IF EXISTS bookings CASCADE`);
+    await pool.query(`DROP TABLE IF EXISTS loyalty CASCADE`);
+    await pool.query(`DROP TABLE IF EXISTS customers CASCADE`);
+    await pool.query(`DROP TABLE IF EXISTS services CASCADE`);
+
     await pool.query(`
-      DROP TABLE IF EXISTS bookings CASCADE;
-      DROP TABLE IF EXISTS services CASCADE;
-      DROP TABLE IF EXISTS customers CASCADE;
-      DROP TABLE IF EXISTS loyalty CASCADE;
+      CREATE TABLE services(
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        description TEXT
+      );
     `);
 
-    // Create tables
     await pool.query(`
-      CREATE TABLE customers (
+      CREATE TABLE customers(
         id SERIAL PRIMARY KEY,
         name VARCHAR(100),
         phone VARCHAR(20),
         email VARCHAR(100),
+        number_plate VARCHAR(15),
         address TEXT
       );
+    `);
 
-      CREATE TABLE services (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100),
-        description TEXT,
-        category VARCHAR(50),
-        price NUMERIC(10,2)
-      );
-
-      CREATE TABLE bookings (
+    await pool.query(`
+      CREATE TABLE bookings(
         id SERIAL PRIMARY KEY,
         customer_id INT REFERENCES customers(id),
         service_id INT REFERENCES services(id),
-        status VARCHAR(50) DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT NOW(),
-        location GEOGRAPHY(POINT,4326),
-        qr_code TEXT
+        latitude NUMERIC(9,6),
+        longitude NUMERIC(9,6),
+        created_at TIMESTAMP DEFAULT NOW()
       );
+    `);
 
-      CREATE TABLE loyalty (
+    await pool.query(`
+      CREATE TABLE loyalty(
         id SERIAL PRIMARY KEY,
         customer_id INT REFERENCES customers(id),
-        points INT DEFAULT 0
+        completed_services INT DEFAULT 0,
+        free_service_available BOOLEAN DEFAULT FALSE
       );
     `);
 
-    // Insert dummy data
+    // Dummy data
     await pool.query(`
-      INSERT INTO customers (name, phone, email, address)
-      VALUES 
-        ('John Doe','+447911123456','john@example.com','1 High St, Medway'),
-        ('Jane Smith','+447911654321','jane@example.com','2 Main Rd, Medway'),
-        ('Bob Brown','+447912345678','bob@example.com','3 Elm St, Medway');
-
-      INSERT INTO services (name, description, category, price)
-      VALUES 
-        ('Oil Change','Standard oil change','Maintenance',49.99),
-        ('Brake Check','Check brakes and pads','Maintenance',39.99),
-        ('Battery Replacement','Replace car battery','Repair',89.99);
-      
-      INSERT INTO bookings (customer_id, service_id, status, qr_code)
-      VALUES 
-        (1,1,'pending',''),
-        (2,2,'pending',''),
-        (3,3,'pending','');
+      INSERT INTO services(name, description) VALUES
+      ('Oil Change', 'Complete engine oil replacement'),
+      ('Brake Check', 'Brake inspection and replacement'),
+      ('Battery Replacement', 'Replace car battery with new one');
     `);
 
-    // Generate QR codes
-    const bookings = await pool.query(`SELECT id FROM bookings`);
-    for (const row of bookings.rows) {
-      const qr = await QRCode.toDataURL(`booking-${row.id}`);
-      await pool.query(`UPDATE bookings SET qr_code=$1 WHERE id=$2`, [qr, row.id]);
-    }
+    await pool.query(`
+      INSERT INTO customers(name, phone, email, number_plate, address) VALUES
+      ('John Doe', '+447911123456', 'john@example.com', 'AB12CDE', '1 Medway Street, ME1 1AA'),
+      ('Jane Smith', '+447911654321', 'jane@example.com', 'XY34ZFG', '2 Medway Avenue, ME2 2BB'),
+      ('Bob Lee', '+447911987654', 'bob@example.com', 'MN56OPQ', '3 Medway Road, ME3 3CC');
+    `);
 
-    console.log('✅ Database initialized with dummy data and QR codes.');
+    await pool.query(`
+      INSERT INTO bookings(customer_id, service_id, latitude, longitude) VALUES
+      (1, 1, 51.3835, 0.5150),
+      (2, 2, 51.3890, 0.5200),
+      (3, 3, 51.3950, 0.5250);
+    `);
+
+    await pool.query(`
+      INSERT INTO loyalty(customer_id, completed_services, free_service_available) VALUES
+      (1, 2, FALSE),
+      (2, 5, TRUE),
+      (3, 1, FALSE);
+    `);
+
+    console.log('✅ Database initialized with dummy data');
   } catch (err) {
     console.error('❌ Database init error:', err);
   }
 }
 
-// --- ROUTES ---
+// Diagnostics endpoint
+app.get('/api/full-diagnostics', async (req, res) => {
+  let diagnostics = {
+    db: { status: 'UNKNOWN', details: null },
+    services: { status: 'UNKNOWN', count: 0 },
+    bookings: { status: 'UNKNOWN', count: 0 },
+    loyalty: { status: 'UNKNOWN', count: 0 },
+    qr: { status: 'UNKNOWN', example: null },
+    geolocation: { status: 'OK', lat: 51.3835, lng: 0.5150 } // example coords
+  };
 
-// Serve customer page
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
-
-// DB status
-app.get('/api/db-status', async (req, res) => {
   try {
-    await pool.query('SELECT 1');
-    res.json({ status: 'connected' });
+    await pool.query('SELECT 1'); // test db connection
+    diagnostics.db.status = 'OK';
   } catch (err) {
-    res.json({ status: 'error', error: err.message });
+    diagnostics.db.status = 'FAIL';
+    diagnostics.db.details = err.message;
   }
-});
 
-// Get services
-app.get('/api/services', async (req, res) => {
-  const services = await pool.query('SELECT * FROM services');
-  res.json(services.rows);
-});
-
-// Get bookings
-app.get('/api/bookings', async (req, res) => {
-  const bookings = await pool.query('SELECT * FROM bookings');
-  res.json(bookings.rows);
-});
-
-// Add booking
-app.post('/api/bookings', async (req, res) => {
   try {
-    const { customer_id, service_id, lat, lng } = req.body;
-    const qr = await QRCode.toDataURL(`booking-${customer_id}-${service_id}-${Date.now()}`);
-    const result = await pool.query(
-      'INSERT INTO bookings (customer_id, service_id, location, qr_code) VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3,$4),4326), $5) RETURNING *',
-      [customer_id, service_id, lng, lat, qr]
-    );
-    res.json({ success: true, booking: result.rows[0] });
+    const s = await pool.query('SELECT COUNT(*) FROM services');
+    diagnostics.services.status = 'OK';
+    diagnostics.services.count = s.rows[0].count;
   } catch (err) {
-    res.json({ success: false, error: err.message });
+    diagnostics.services.status = 'FAIL';
+    diagnostics.services.details = err.message;
   }
+
+  try {
+    const b = await pool.query('SELECT COUNT(*) FROM bookings');
+    diagnostics.bookings.status = 'OK';
+    diagnostics.bookings.count = b.rows[0].count;
+  } catch (err) {
+    diagnostics.bookings.status = 'FAIL';
+    diagnostics.bookings.details = err.message;
+  }
+
+  try {
+    const l = await pool.query('SELECT COUNT(*) FROM loyalty');
+    diagnostics.loyalty.status = 'OK';
+    diagnostics.loyalty.count = l.rows[0].count;
+  } catch (err) {
+    diagnostics.loyalty.status = 'FAIL';
+    diagnostics.loyalty.details = err.message;
+  }
+
+  // Test QR code generation
+  try {
+    const qr = await QRCode.toDataURL('Test QR');
+    diagnostics.qr.status = 'OK';
+    diagnostics.qr.example = qr;
+  } catch (err) {
+    diagnostics.qr.status = 'FAIL';
+    diagnostics.qr.details = err.message;
+  }
+
+  res.json(diagnostics);
 });
 
-// --- START SERVER ---
 app.listen(3000, async () => {
-  console.log('🚀 Server running on port 3000');
   await initDb();
+  console.log('🚀 Server running on port 3000');
 });
