@@ -1,207 +1,195 @@
+<!-- frontend/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="style.css">
 <style>
-  body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f8f9fa; }
-  .hero { background:#343a40; color:white; padding:3rem 1rem; text-align:center; }
-  .hero h1 { font-size:2.5rem; margin-bottom:1rem; }
-  .carousel-item { padding:1rem; text-align:center; background:white; border-radius:8px; }
-  .services-section { padding:2rem 0; }
-  .faq-section { background:#e9ecef; padding:2rem 1rem; }
-  .booking-form { background:white; padding:2rem; border-radius:8px; margin-bottom:2rem; }
-  .modal, #loginModal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; justify-content:center; align-items:center; z-index:1000; }
-  .modal-content { background:white; padding:2rem; border-radius:10px; max-width:400px; width:90%; text-align:center; }
-  .btn-primary { background:#007bff; border:none; }
-  .profile-menu { position:absolute; top:10px; right:10px; background:white; padding:10px; border-radius:8px; display:none; }
+  body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f7f7f7; }
+  header { background:#003366; color:#fff; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { margin:0; font-size:1.5rem; }
+  .btn { background:#ffcc00; border:none; padding:.5rem 1rem; cursor:pointer; border-radius:5px; font-weight:bold; }
+  .carousel { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; padding:1rem; gap:1rem; }
+  .card { background:#fff; min-width:250px; flex:0 0 auto; border-radius:10px; padding:1rem; box-shadow:0 2px 6px rgba(0,0,0,0.2); scroll-snap-align:start; }
+  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000; }
+  .modal-content { background:#fff; padding:2rem; border-radius:10px; max-width:400px; width:90%; position:relative; }
+  .modal-content h2 { margin-top:0; }
+  .close { position:absolute; top:10px; right:15px; cursor:pointer; font-weight:bold; font-size:1.2rem; }
+  .qr-code { width:200px; height:200px; margin:1rem auto; display:block; }
+  nav { display:flex; gap:1rem; }
+  .hidden { display:none; }
 </style>
 </head>
 <body>
 
-<!-- Hero Section -->
-<section class="hero">
-  <h1>Fast & Reliable Mobile Mechanic Services</h1>
-  <p>Book online and get your car serviced at your doorstep</p>
-  <button class="btn btn-primary" onclick="scrollToBooking()">Book Now</button>
-  <button class="btn btn-light" onclick="showLogin()">Login / Register</button>
+<header>
+  <h1>Mobile Mechanic</h1>
+  <nav>
+    <button class="btn" id="loginBtn">Login/Register</button>
+    <button class="btn" id="bookingBtn">Book Now</button>
+    <span id="welcomeMsg" class="hidden"></span>
+  </nav>
+</header>
+
+<section id="hero" style="padding:1rem; text-align:center;">
+  <h2>Fast Mobile Mechanic Service at Your Doorstep</h2>
+  <p>Book, track, and pay for your vehicle service quickly and safely.</p>
 </section>
 
-<!-- Profile Menu -->
-<div class="profile-menu" id="profileMenu">
-  <p id="profileName"></p>
-  <p>Loyalty: <span id="loyaltyPoints"></span> pts</p>
-  <button class="btn btn-primary btn-sm w-100 mb-1" onclick="logout()">Logout</button>
-</div>
-
-<!-- Services Carousel -->
-<section class="services-section container">
-  <h2 class="text-center mb-4">Our Services</h2>
-  <div id="servicesCarousel" class="carousel slide" data-bs-ride="carousel">
-    <div class="carousel-inner" id="carouselInner"></div>
-    <button class="carousel-control-prev" type="button" data-bs-target="#servicesCarousel" data-bs-slide="prev">
-      <span class="carousel-control-prev-icon"></span>
-    </button>
-    <button class="carousel-control-next" type="button" data-bs-target="#servicesCarousel" data-bs-slide="next">
-      <span class="carousel-control-next-icon"></span>
-    </button>
+<section>
+  <h3 style="padding-left:1rem;">Our Services</h3>
+  <div class="carousel" id="servicesCarousel">
+    <!-- Service cards will be populated here -->
   </div>
 </section>
 
-<!-- Booking Form -->
-<section id="bookingSection" class="booking-form container">
-  <h3>Book a Service</h3>
-  <input type="text" id="customerName" placeholder="Full Name" class="form-control mb-2" required>
-  <input type="email" id="customerEmail" placeholder="Email" class="form-control mb-2" required>
-  <input type="text" id="customerPhone" placeholder="Phone 07XXXXXXXXX" class="form-control mb-2" required>
-  <input type="text" id="customerReg" placeholder="Car Reg Plate AB12 CDE" class="form-control mb-2" required>
-  <input type="text" id="customerAddress" placeholder="Address" class="form-control mb-2" required>
-  <select id="serviceSelect" class="form-select mb-2"></select>
-  <button class="btn btn-primary w-100" onclick="submitBooking()">Confirm Booking</button>
-</section>
-
-<!-- Booking History -->
-<section id="bookingHistory" class="container" style="display:none;">
+<section id="bookingHistory" class="hidden" style="padding:1rem;">
   <h3>Your Bookings</h3>
-  <ul id="bookingList" class="list-group mb-4"></ul>
+  <ul id="bookingList"></ul>
 </section>
-
-<!-- FAQ Section -->
-<section class="faq-section container">
-  <h3>FAQ</h3>
-  <p><strong>Q:</strong> How fast can you reach me?<br><strong>A:</strong> Our average response time is 45 minutes within the city.</p>
-  <p><strong>Q:</strong> Can I pay online?<br><strong>A:</strong> Yes, we support card and PayPal payments.</p>
-</section>
-
-<!-- Ticket Modal -->
-<div class="modal" id="ticketModal">
-  <div class="modal-content">
-    <h2>Your Service Ticket</h2>
-    <p id="ticketService"></p>
-    <p id="ticketCustomer"></p>
-    <p id="ticketDate"></p>
-    <img id="ticketQR" src="" alt="QR Code" style="width:80%;margin:1rem 0;">
-    <button class="btn btn-primary w-100" onclick="closeTicket()">Close</button>
-  </div>
-</div>
 
 <!-- Login/Register Modal -->
 <div class="modal" id="loginModal">
   <div class="modal-content">
-    <h2 id="loginTitle">Login</h2>
-    <input type="email" id="loginEmail" placeholder="Email" class="form-control mb-2">
-    <input type="password" id="loginPassword" placeholder="Password" class="form-control mb-2">
-    <button class="btn btn-primary w-100 mb-2" onclick="loginUser()">Login</button>
-    <p>or</p>
-    <input type="text" id="regName" placeholder="Full Name" class="form-control mb-2">
-    <input type="email" id="regEmail" placeholder="Email" class="form-control mb-2">
-    <input type="password" id="regPassword" placeholder="Password" class="form-control mb-2">
-    <button class="btn btn-primary w-100" onclick="registerUser()">Register</button>
-    <button class="btn btn-secondary w-100 mt-2" onclick="closeLogin()">Close</button>
+    <span class="close" id="closeLogin">&times;</span>
+    <h2>Login / Register</h2>
+    <form id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" required style="width:100%;margin:.5rem 0;padding:.5rem;">
+      <input type="password" id="loginPassword" placeholder="Password" required style="width:100%;margin:.5rem 0;padding:.5rem;">
+      <button type="submit" class="btn" style="width:100%;">Login</button>
+      <p style="text-align:center;margin:.5rem 0;">Or Register Below</p>
+      <input type="text" id="regName" placeholder="Name" required style="width:100%;margin:.5rem 0;padding:.5rem;">
+      <input type="text" id="regPhone" placeholder="Phone (07XXXXXXXXX)" required style="width:100%;margin:.5rem 0;padding:.5rem;">
+      <input type="text" id="regRegPlate" placeholder="Car Reg Plate (AB12 CDE)" required style="width:100%;margin:.5rem 0;padding:.5rem;">
+      <input type="text" id="regAddress" placeholder="Address" required style="width:100%;margin:.5rem 0;padding:.5rem;">
+      <input type="email" id="regEmail" placeholder="Email" required style="width:100%;margin:.5rem 0;padding:.5rem;">
+      <input type="password" id="regPassword" placeholder="Password" required style="width:100%;margin:.5rem 0;padding:.5rem;">
+      <button type="button" id="registerBtn" class="btn" style="width:100%;margin-top:.5rem;">Register</button>
+    </form>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<!-- Booking Modal -->
+<div class="modal" id="bookingModal">
+  <div class="modal-content">
+    <span class="close" id="closeBooking">&times;</span>
+    <h2>Book a Service</h2>
+    <select id="serviceSelect" style="width:100%;margin:.5rem 0;padding:.5rem;"></select>
+    <input type="text" id="bookingLocation" placeholder="Location" style="width:100%;margin:.5rem 0;padding:.5rem;">
+    <input type="text" id="bookingPostcode" placeholder="Postcode" style="width:100%;margin:.5rem 0;padding:.5rem;">
+    <button id="bookServiceBtn" class="btn" style="width:100%;">Confirm Booking</button>
+    <img id="bookingQRCode" class="qr-code hidden" />
+  </div>
+</div>
+
 <script>
-  // Dummy services
-  const services = [
-    {id:1,name:"Oil Change",description:"Full synthetic oil change"},
-    {id:2,name:"Brake Inspection",description:"Check and adjust brakes"},
-    {id:3,name:"Battery Replacement",description:"Replace old battery"}
-  ];
+let currentUser = null;
 
-  // Populate carousel and select
-  const carouselInner = document.getElementById('carouselInner');
-  const serviceSelect = document.getElementById('serviceSelect');
-  services.forEach((s,i)=>{
-    carouselInner.innerHTML += `<div class="carousel-item ${i===0?'active':''}">
-      <h5>${s.name}</h5>
-      <p>${s.description}</p>
-    </div>`;
-    serviceSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+// Modal logic
+const loginModal = document.getElementById("loginModal");
+const bookingModal = document.getElementById("bookingModal");
+document.getElementById("loginBtn").onclick = ()=> loginModal.style.display = "flex";
+document.getElementById("bookingBtn").onclick = ()=> bookingModal.style.display = "flex";
+document.getElementById("closeLogin").onclick = ()=> loginModal.style.display = "none";
+document.getElementById("closeBooking").onclick = ()=> bookingModal.style.display = "none";
+
+// Load services
+async function loadServices(){
+  const res = await fetch("/api/diagnostics");
+  const data = await res.json();
+  const carousel = document.getElementById("servicesCarousel");
+  const serviceRes = await fetch("/api/services");
+  const servicesData = await serviceRes.json();
+  servicesData.forEach(s=>{
+    const card = document.createElement("div");
+    card.className="card";
+    card.innerHTML=`<h4>${s.name}</h4><p>${s.description}</p>`;
+    carousel.appendChild(card);
+    const option = document.createElement("option");
+    option.value=s.id;
+    option.textContent = s.name;
+    document.getElementById("serviceSelect").appendChild(option);
   });
+}
 
-  // Profile management
-  let currentUser = null;
-  function showProfile() {
-    if(currentUser){
-      document.getElementById('profileName').innerText = currentUser.name;
-      document.getElementById('loyaltyPoints').innerText = currentUser.loyalty || 0;
-      document.getElementById('profileMenu').style.display='block';
-      document.getElementById('bookingHistory').style.display='block';
-      renderBookings();
-    }
-  }
-  function logout() {
-    currentUser = null;
-    document.getElementById('profileMenu').style.display='none';
-    document.getElementById('bookingHistory').style.display='none';
-    showLogin();
-  }
+// Login
+document.getElementById("loginForm").onsubmit = async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPassword").value;
+  const res = await fetch("/api/customers/login", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({email,password})
+  });
+  const data = await res.json();
+  if(data.error){ alert(data.error); return; }
+  currentUser = data;
+  loginModal.style.display="none";
+  document.getElementById("welcomeMsg").textContent=`Welcome, ${data.name}`;
+  document.getElementById("welcomeMsg").classList.remove("hidden");
+  loadBookingHistory();
+};
 
-  // Login/Register modal
-  function showLogin(){document.getElementById('loginModal').style.display='flex';}
-  function closeLogin(){document.getElementById('loginModal').style.display='none';}
+// Register
+document.getElementById("registerBtn").onclick = async ()=>{
+  const payload = {
+    name: document.getElementById("regName").value,
+    phone: document.getElementById("regPhone").value,
+    reg_plate: document.getElementById("regRegPlate").value,
+    address: document.getElementById("regAddress").value,
+    email: document.getElementById("regEmail").value,
+    password: document.getElementById("regPassword").value
+  };
+  const res = await fetch("/api/customers/register", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if(data.error){ alert(data.error); return; }
+  alert("Registered! Please login.");
+};
 
-  function loginUser(){
-    const email = document.getElementById('loginEmail').value;
-    const pwd = document.getElementById('loginPassword').value;
-    // Dummy auth
-    currentUser = {name:'John Doe',email,email,loyalty:10,bookings:[
-      {service:'Oil Change',date:'2025-09-22',qr_code:''},
-      {service:'Brake Inspection',date:'2025-09-20',qr_code:''}
-    ]};
-    closeLogin(); showProfile();
-  }
-  function registerUser(){
-    const name=document.getElementById('regName').value;
-    const email=document.getElementById('regEmail').value;
-    const pwd=document.getElementById('regPassword').value;
-    currentUser={name,email,loyalty:0,bookings:[]};
-    closeLogin(); showProfile();
-  }
+// Booking
+document.getElementById("bookServiceBtn").onclick = async ()=>{
+  if(!currentUser){ alert("Please login first."); return; }
+  const payload = {
+    customer_id: currentUser.id,
+    service_id: document.getElementById("serviceSelect").value,
+    location: document.getElementById("bookingLocation").value,
+    postcode: document.getElementById("bookingPostcode").value
+  };
+  const res = await fetch("/api/bookings", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if(data.error){ alert(data.error); return; }
+  document.getElementById("bookingQRCode").src = data.qr_code;
+  document.getElementById("bookingQRCode").classList.remove("hidden");
+  loadBookingHistory();
+};
 
-  // Booking
-  function submitBooking() {
-    if(!currentUser) return showLogin();
-    const serviceId = parseInt(serviceSelect.value);
-    const serviceName = services.find(s=>s.id==serviceId).name;
-    const bookingData = {service:serviceName,name:currentUser.name,customer_id:Date.now(),service_id:serviceId};
-    QRCode.toDataURL(`booking:${bookingData.customer_id}:${bookingData.service_id}:${Date.now()}`)
-      .then(url=>{
-        bookingData.qr_code = url;
-        currentUser.bookings.push(bookingData);
-        showTicket(bookingData);
-        renderBookings();
-      });
-  }
+// Load Booking History
+async function loadBookingHistory(){
+  const res = await fetch(`/api/customers/${currentUser.id}/bookings`);
+  const bookings = await res.json();
+  const list = document.getElementById("bookingList");
+  list.innerHTML="";
+  bookings.forEach(b=>{
+    const li = document.createElement("li");
+    li.textContent = `${b.service_name} at ${b.location} (${b.status})`;
+    list.appendChild(li);
+  });
+}
 
-  // Booking history
-  function renderBookings() {
-    const list = document.getElementById('bookingList');
-    list.innerHTML='';
-    currentUser.bookings.forEach(b=>{
-      const li = document.createElement('li');
-      li.className='list-group-item d-flex justify-content-between align-items-center';
-      li.innerHTML=`${b.service} - ${b.date || new Date().toLocaleDateString()} 
-        <button class="btn btn-sm btn-primary" onclick='showTicket(${JSON.stringify(b).replace(/'/g,"&apos;")})'>QR</button>`;
-      list.appendChild(li);
-    });
-  }
-
-  // Ticket modal
-  function showTicket(booking){
-    document.getElementById('ticketService').innerText=`Service: ${booking.service}`;
-    document.getElementById('ticketCustomer').innerText=`Customer: ${booking.name}`;
-    document.getElementById('ticketDate').innerText=`Date: ${booking.date || new Date().toLocaleString()}`;
-    document.getElementById('ticketQR').src=booking.qr_code;
-    document.getElementById('ticketModal').style.display='flex';
-  }
-  function closeTicket(){document.getElementById('ticketModal').style.display='none';}
-  function scrollToBooking(){document.getElementById('bookingSection').scrollIntoView({behavior:'smooth'});}
+// Init
+loadServices();
 </script>
+
 </body>
 </html>
