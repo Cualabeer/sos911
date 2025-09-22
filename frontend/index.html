@@ -3,190 +3,188 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mobile Mechanic Booking</title>
+<title>Mobile Mechanic</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-  body { padding-top: 70px; }
-  .carousel-item { text-align: center; }
-  .diagnostics-panel {
-    position: fixed; bottom: 0; left: 0; width: 100%;
-    max-height: 75%; background: #fff; overflow-y: auto;
-    transform: translateY(100%); transition: transform 0.3s ease;
-    box-shadow: 0 -3px 10px rgba(0,0,0,0.2); z-index: 1050;
-  }
-  .diagnostics-panel.show { transform: translateY(0); }
+  body {padding-top: 70px;}
+  .carousel-item {height: 250px; background-size: cover; background-position: center;}
+  #profileMenu {position: fixed; top: 70px; right: 0; width: 300px; max-height: 80%; overflow-y: auto; background: #f8f9fa; border-left: 1px solid #ccc; padding: 15px; display: none;}
+  .modal-lg {max-width: 90%;}
 </style>
 </head>
 <body>
 
-<!-- Header -->
+<!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
   <div class="container-fluid">
-    <a class="navbar-brand" href="#">MobileMechanic</a>
-    <div class="d-flex">
-      <button class="btn btn-outline-light me-2" data-bs-toggle="modal" data-bs-target="#loginModal">Login</button>
-      <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#registerModal">Register</button>
-    </div>
+    <a class="navbar-brand" href="#">SOS Mechanics</a>
+    <button class="btn btn-outline-light" id="loginBtn">Login / Register</button>
   </div>
 </nav>
 
 <!-- Hero -->
-<header class="container text-center my-5">
-  <h1>Fast, Reliable Mobile Mechanic Service</h1>
-  <p>Book a service or request a quote instantly. Available wherever you are.</p>
-  <button class="btn btn-primary btn-lg" onclick="document.getElementById('bookingForm').scrollIntoView({behavior:'smooth'})">Book Now</button>
+<header class="bg-primary text-white text-center py-5">
+  <h1>Your Mobile Mechanic</h1>
+  <p>Quick, Reliable, On-Demand Vehicle Services</p>
 </header>
 
 <!-- Services Carousel -->
-<div class="container my-5">
-  <h2 class="mb-4 text-center">Our Services</h2>
-  <div id="servicesCarousel" class="carousel slide" data-bs-ride="carousel">
-    <div class="carousel-inner" id="servicesContainer">
-      <!-- JS will populate service cards here -->
-    </div>
-    <button class="carousel-control-prev" type="button" data-bs-target="#servicesCarousel" data-bs-slide="prev">
-      <span class="carousel-control-prev-icon"></span>
-    </button>
-    <button class="carousel-control-next" type="button" data-bs-target="#servicesCarousel" data-bs-slide="next">
-      <span class="carousel-control-next-icon"></span>
-    </button>
-  </div>
+<div id="servicesCarousel" class="carousel slide container mt-4" data-bs-ride="carousel">
+  <div class="carousel-inner" id="servicesInner"></div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#servicesCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon"></span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#servicesCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon"></span>
+  </button>
 </div>
 
-<!-- Booking Form -->
-<div class="container my-5" id="bookingForm">
-  <h2>Book a Service</h2>
-  <form id="bookServiceForm" class="needs-validation" novalidate>
-    <div class="mb-3">
-      <label for="customerEmail" class="form-label">Email</label>
-      <input type="email" class="form-control" id="customerEmail" required>
+<!-- Quote / Callout Estimation -->
+<section class="container mt-5">
+  <h3>Get a Quick Quote</h3>
+  <form id="quoteForm" class="row g-3">
+    <div class="col-md-4">
+      <input type="text" id="quoteService" class="form-control" placeholder="Service Name" required>
     </div>
-    <div class="mb-3">
-      <label for="customerPhone" class="form-label">Phone</label>
-      <input type="text" class="form-control" id="customerPhone" required pattern="^07\d{9}$">
+    <div class="col-md-4">
+      <input type="text" id="quoteCallout" class="form-control" placeholder="Postcode" required>
     </div>
-    <div class="mb-3">
-      <label for="regPlate" class="form-label">Car Registration</label>
-      <input type="text" class="form-control" id="regPlate" required pattern="^[A-Z]{2}\d{2} [A-Z]{3}$">
+    <div class="col-md-4">
+      <button class="btn btn-success w-100" type="submit">Estimate</button>
     </div>
-    <div class="mb-3">
-      <label for="serviceSelect" class="form-label">Select Service</label>
-      <select class="form-select" id="serviceSelect" required></select>
-    </div>
-    <button type="submit" class="btn btn-success">Book Now</button>
   </form>
-  <div id="bookingMessage" class="mt-3"></div>
-</div>
+  <div id="quoteResult" class="mt-3"></div>
+</section>
 
-<!-- Footer Diagnostics -->
-<footer class="bg-dark text-light text-center py-3">
-  <button class="btn btn-outline-light" id="diagBtn">Diagnostics</button>
-</footer>
-
-<!-- Diagnostics Panel -->
-<div class="diagnostics-panel" id="diagPanel">
-  <div class="p-3">
-    <h5>System Diagnostics</h5>
-    <button class="btn btn-sm btn-secondary mb-2" id="closeDiag">Close</button>
-    <pre id="diagOutput"></pre>
-  </div>
-</div>
-
-<!-- Login Modal -->
-<div class="modal fade" id="loginModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content p-3">
-      <h5>Login</h5>
-      <form id="loginForm">
-        <input type="email" class="form-control my-2" placeholder="Email" required>
-        <input type="password" class="form-control my-2" placeholder="Password" required>
-        <button class="btn btn-primary w-100">Login</button>
-      </form>
+<!-- FAQ -->
+<section class="container mt-5">
+  <h3>Frequently Asked Questions</h3>
+  <div class="accordion" id="faqAccordion">
+    <div class="accordion-item">
+      <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">How quickly can a mechanic arrive?</button></h2>
+      <div id="faq1" class="accordion-collapse collapse show">
+        <div class="accordion-body">Within 60 minutes for urgent requests.</div>
+      </div>
+    </div>
+    <div class="accordion-item">
+      <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">Do you offer warranty on parts?</button></h2>
+      <div id="faq2" class="accordion-collapse collapse">
+        <div class="accordion-body">Yes, all parts come with a 12-month warranty.</div>
+      </div>
     </div>
   </div>
+</section>
+
+<!-- Customer Dashboard -->
+<div id="profileMenu">
+  <h5>Profile</h5>
+  <div id="loyaltyPoints" class="mb-2"></div>
+  <h6>Your Cars</h6>
+  <ul id="carList"></ul>
+  <button class="btn btn-secondary mb-2 w-100" id="addCarBtn">Add Car</button>
+  <h6>Booking History</h6>
+  <ul id="bookingHistory"></ul>
+  <button class="btn btn-danger w-100" id="logoutBtn">Logout</button>
 </div>
 
-<!-- Register Modal -->
-<div class="modal fade" id="registerModal" tabindex="-1">
-  <div class="modal-dialog">
+<!-- Login/Register Modal -->
+<div class="modal fade" id="authModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content p-3">
-      <h5>Register</h5>
-      <form id="registerForm">
-        <input type="text" class="form-control my-2" placeholder="Name" required>
-        <input type="email" class="form-control my-2" placeholder="Email" required>
-        <input type="password" class="form-control my-2" placeholder="Password" required>
-        <input type="password" class="form-control my-2" placeholder="Confirm Password" required>
-        <button class="btn btn-success w-100">Register</button>
+      <h5 id="authTitle">Login</h5>
+      <form id="authForm">
+        <div class="mb-2">
+          <label>Email</label>
+          <input type="email" id="authEmail" class="form-control" required>
+        </div>
+        <div class="mb-2">
+          <label>Password</label>
+          <input type="password" id="authPassword" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Submit</button>
       </form>
+      <p class="mt-2 text-center">
+        <a href="#" id="toggleAuth">Switch to Register</a>
+      </p>
+      <div id="authResult" class="mt-2"></div>
     </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  // Populate services carousel
-  const services = [
-    {id:1, name:'Oil Change', description:'Full synthetic oil change'},
-    {id:2, name:'Brake Inspection', description:'Check and adjust brakes'},
-    {id:3, name:'Battery Replacement', description:'Replace old battery'}
-  ];
+let loggedInCustomer = null;
+const authModal = new bootstrap.Modal(document.getElementById('authModal'));
+document.getElementById('loginBtn').addEventListener('click',()=>authModal.show());
 
-  const servicesContainer = document.getElementById('servicesContainer');
-  services.forEach((s, i) => {
-    const active = i===0?'active':'';
-    const item = document.createElement('div');
-    item.className = 'carousel-item '+active;
-    item.innerHTML = `
-      <div class="card mx-auto" style="width: 18rem;">
-        <div class="card-body">
-          <h5 class="card-title">${s.name}</h5>
-          <p class="card-text">${s.description}</p>
-        </div>
-      </div>
-    `;
-    servicesContainer.appendChild(item);
+document.getElementById('toggleAuth').addEventListener('click', e=>{
+  e.preventDefault();
+  const isLogin = document.getElementById('authTitle').textContent === 'Login';
+  document.getElementById('authTitle').textContent = isLogin?'Register':'Login';
+  document.getElementById('authForm').reset();
+  document.getElementById('authResult').textContent = '';
+});
 
-    // Add to select
-    const option = document.createElement('option');
-    option.value = s.id;
-    option.textContent = s.name;
-    document.getElementById('serviceSelect').appendChild(option);
+// Authentication
+document.getElementById('authForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const email = document.getElementById('authEmail').value;
+  const password = document.getElementById('authPassword').value;
+  const isLogin = document.getElementById('authTitle').textContent === 'Login';
+  const endpoint = isLogin?'/api/customers/login':'/api/customers/register';
+  const res = await fetch(endpoint,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({email,password})
   });
+  const data = await res.json();
+  if(data.error){document.getElementById('authResult').textContent=data.error;return;}
+  loggedInCustomer=data;
+  authModal.hide();
+  showDashboard();
+});
 
-  // Booking form submit
-  document.getElementById('bookServiceForm').addEventListener('submit', async e=>{
-    e.preventDefault();
-    const customerEmail = document.getElementById('customerEmail').value;
-    const customerPhone = document.getElementById('customerPhone').value;
-    const regPlate = document.getElementById('regPlate').value;
-    const serviceId = document.getElementById('serviceSelect').value;
+// Dashboard
+async function showDashboard(){
+  document.getElementById('profileMenu').style.display='block';
+  document.getElementById('loyaltyPoints').textContent=`Loyalty Points: ${loggedInCustomer.points||0}`;
+  const carList=document.getElementById('carList'); carList.innerHTML='';
+  (loggedInCustomer.cars||[]).forEach(c=>{const li=document.createElement('li');li.textContent=c;carList.appendChild(li);});
+  const res=await fetch(`/api/customers/${loggedInCustomer.id}/bookings`);
+  const bookings=await res.json();
+  const history=document.getElementById('bookingHistory'); history.innerHTML='';
+  bookings.forEach(b=>{const li=document.createElement('li');li.textContent=`${b.service_name} - ${b.status}`;history.appendChild(li);});
+}
 
-    try {
-      const res = await fetch('/api/bookings', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({customer_id:1, service_id:serviceId, location:'Test', postcode:'ME1 1AA'})
-      });
-      const data = await res.json();
-      document.getElementById('bookingMessage').textContent = '✅ Booking successful! QR ready.';
-    } catch(err){
-      document.getElementById('bookingMessage').textContent = '❌ Booking failed.';
-    }
+// Logout
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  loggedInCustomer=null;
+  document.getElementById('profileMenu').style.display='none';
+  authModal.show();
+});
+
+// Add Car
+document.getElementById('addCarBtn').addEventListener('click', ()=>{
+  const car = prompt('Enter car registration number:');
+  if(car){loggedInCustomer.cars=loggedInCustomer.cars||[];loggedInCustomer.cars.push(car);showDashboard();}
+});
+
+// Populate services carousel
+async function loadServices(){
+  const res=await fetch('/api/services');
+  const services=await res.json();
+  const inner=document.getElementById('servicesInner');
+  services.forEach((s,i)=>{
+    const div=document.createElement('div');
+    div.className='carousel-item'+(i===0?' active':'');
+    div.style.backgroundImage=`url('https://via.placeholder.com/600x250?text=${encodeURIComponent(s.name)}')`;
+    div.innerHTML=`<div class="carousel-caption d-none d-md-block"><h5>${s.name}</h5><p>${s.description}</p></div>`;
+    inner.appendChild(div);
   });
+}
 
-  // Diagnostics panel
-  const diagBtn = document.getElementById('diagBtn');
-  const diagPanel = document.getElementById('diagPanel');
-  const closeDiag = document.getElementById('closeDiag');
-
-  diagBtn.addEventListener('click', async ()=>{
-    diagPanel.classList.add('show');
-    const res = await fetch('/api/diagnostics');
-    const data = await res.json();
-    document.getElementById('diagOutput').textContent = JSON.stringify(data,null,2);
-  });
-
-  closeDiag.addEventListener('click', ()=> diagPanel.classList.remove('show'));
+loadServices();
 </script>
+
 </body>
 </html>
