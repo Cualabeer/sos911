@@ -4,118 +4,157 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512...YOUR_HASH..." crossorigin="anonymous" referrerpolicy="no-referrer" />
 <style>
-  body {margin:0;font-family:Arial,sans-serif;background:#f9f9f9;}
-  header {background:#1E3A8A;color:white;padding:15px;text-align:center;}
-  .hero {padding:20px;text-align:center;background:#3B82F6;color:white;}
-  .services-carousel {display:flex;overflow-x:auto;scroll-behavior:smooth;padding:10px;}
-  .service-card {min-width:200px;background:white;margin:0 10px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.2);padding:15px;text-align:center;}
-  .service-card h3 {margin:10px 0 5px;}
-  .service-card p {font-size:0.9em;color:#555;}
-  .btn {background:#2563EB;color:white;padding:10px 15px;border:none;border-radius:5px;cursor:pointer;margin:5px;}
-  .btn:hover {background:#1D4ED8;}
-  /* Diagnostics panel */
-  #diag-panel {position:fixed;bottom:-75%;left:0;width:100%;height:75%;background:#fff;box-shadow:0 -5px 15px rgba(0,0,0,0.3);overflow:auto;transition:bottom 0.5s ease;z-index:9999;}
-  #diag-panel-header {padding:10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ccc;}
-  #diag-content {padding:10px;}
-  #diag-btn {position:fixed;bottom:10px;right:10px;z-index:1000;}
+  body { font-family: Arial,sans-serif; margin:0; padding:0; background:#f9f9f9; }
+  header { background:#003366; color:white; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { margin:0; font-size:1.5rem; }
+  button { cursor:pointer; padding:.5rem 1rem; border:none; border-radius:5px; }
+  .hero { background:#0055aa; color:white; text-align:center; padding:4rem 1rem; }
+  .hero h2 { font-size:2rem; margin-bottom:1rem; }
+  .hero button { background:#ffcc00; font-weight:bold; }
+  .carousel { display:flex; overflow-x:auto; gap:1rem; padding:2rem 1rem; scroll-behavior:smooth; }
+  .service-card { min-width:250px; background:white; border-radius:10px; padding:1rem; flex:0 0 auto; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+  .service-card h3 { margin:0 0 .5rem 0; }
+  .service-card p { margin:0 0 1rem 0; font-size:.9rem; }
+  .booking-form { background:white; margin:2rem 1rem; padding:1rem; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+  .booking-form label { display:block; margin:.5rem 0 0.2rem 0; }
+  .booking-form input, .booking-form select { width:100%; padding:.5rem; margin-bottom:.5rem; border-radius:5px; border:1px solid #ccc; }
+  .diagnostics { position:fixed; bottom:0; left:0; right:0; background:white; border-top:2px solid #003366; max-height:0; overflow:hidden; transition:max-height .5s; z-index:999; }
+  .diagnostics.open { max-height:75%; overflow:auto; }
+  .diagnostics h4 { margin:1rem; }
+  .diagnostics pre { background:#f0f0f0; padding:1rem; margin:1rem; border-radius:5px; overflow:auto;}
+  .footer-btn { position:fixed; bottom:1rem; right:1rem; background:#003366; color:white; border-radius:50%; width:50px; height:50px; font-size:1.5rem; display:flex; justify-content:center; align-items:center; z-index:1000; }
+  .modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:none; justify-content:center; align-items:center; z-index:1001; }
+  .modal-content { background:white; padding:2rem; border-radius:10px; width:90%; max-width:400px; }
+  .modal-content h3 { margin-top:0; }
+  .modal-content input { width:100%; padding:.5rem; margin-bottom:.5rem; border-radius:5px; border:1px solid #ccc; }
+  .modal-content button { width:100%; margin-top:1rem; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Mobile Mechanic Booking</h1>
+  <h1>Mobile Mechanic</h1>
+  <button id="loginBtn">Login/Register</button>
 </header>
 
-<div class="hero">
-  <h2>Your car, our care!</h2>
-  <p>Quick service bookings, transparent pricing, and loyalty rewards.</p>
+<section class="hero">
+  <h2>Fast, Reliable Mobile Car Service</h2>
+  <button id="bookNowHero">Book Now</button>
+</section>
+
+<section class="carousel" id="servicesCarousel">
+  <!-- Service cards will populate here -->
+</section>
+
+<section class="booking-form" id="bookingSection">
+  <h3>Book Your Service</h3>
+  <form id="bookingForm">
+    <label for="customerEmail">Email</label>
+    <input type="email" id="customerEmail" required>
+    <label for="regPlate">Car Number Plate</label>
+    <input type="text" id="regPlate" required>
+    <label for="serviceSelect">Select Service</label>
+    <select id="serviceSelect"></select>
+    <label for="address">Address</label>
+    <input type="text" id="address" required>
+    <button type="submit">Book Service</button>
+  </form>
+</section>
+
+<div class="footer-btn" id="diagBtn">⚙️</div>
+<div class="diagnostics" id="diagnosticsPanel">
+  <h4>System Diagnostics</h4>
+  <pre id="diagOutput">Checking...</pre>
+  <button id="closeDiag">Close</button>
 </div>
 
-<div class="services-carousel" id="services-carousel">
-  <!-- Services will be populated here -->
-</div>
-
-<div style="text-align:center;margin:20px;">
-  <button class="btn" onclick="openBookingForm()">Book Now</button>
-</div>
-
-<!-- Diagnostics Button -->
-<button id="diag-btn" class="btn"><i class="fa fa-tools"></i> Run Diagnostics</button>
-
-<!-- Diagnostics Panel -->
-<div id="diag-panel">
-  <div id="diag-panel-header">
-    <strong>System Diagnostics</strong>
-    <button id="diag-close" class="btn">Close</button>
+<div class="modal" id="loginModal">
+  <div class="modal-content">
+    <h3>Login / Register</h3>
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button id="loginSubmit">Login</button>
+    <button id="registerSubmit">Register</button>
+    <button id="closeLogin">Close</button>
   </div>
-  <div id="diag-content"></div>
 </div>
 
 <script>
-// Example: populate services carousel from API
+const servicesCarousel = document.getElementById('servicesCarousel');
+const serviceSelect = document.getElementById('serviceSelect');
+const diagBtn = document.getElementById('diagBtn');
+const diagnosticsPanel = document.getElementById('diagnosticsPanel');
+const diagOutput = document.getElementById('diagOutput');
+const closeDiag = document.getElementById('closeDiag');
+const bookingForm = document.getElementById('bookingForm');
+const loginBtn = document.getElementById('loginBtn');
+const loginModal = document.getElementById('loginModal');
+const closeLogin = document.getElementById('closeLogin');
+
+// Fetch services from backend
 async function loadServices() {
   try {
-    const res = await fetch('/api/services');
-    const services = await res.json();
-    const carousel = document.getElementById('services-carousel');
-    carousel.innerHTML = services.map(s => `
-      <div class="service-card">
-        <h3>${s.name}</h3>
-        <p>${s.description || 'No description provided'}</p>
-        <button class="btn" onclick="bookService(${s.id})">Book</button>
-      </div>
-    `).join('');
+    const res = await fetch('/api/diagnostics');
+    const data = await res.json();
+    const servicesRes = await fetch('/api/services');
+    const servicesData = await servicesRes.json();
+    servicesData.forEach(s => {
+      const card = document.createElement('div');
+      card.classList.add('service-card');
+      card.innerHTML = `<h3>${s.name}</h3><p>${s.description}</p><button onclick="selectService(${s.id})">Book Now</button>`;
+      servicesCarousel.appendChild(card);
+      const option = document.createElement('option');
+      option.value = s.id;
+      option.textContent = s.name;
+      serviceSelect.appendChild(option);
+    });
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function selectService(id) {
+  serviceSelect.value = id;
+  window.scrollTo({top: bookingForm.offsetTop, behavior:'smooth'});
+}
+
+// Booking form submit
+bookingForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const payload = {
+    customer_id: 1, // For testing, replace with logged in id
+    service_id: serviceSelect.value,
+    location: document.getElementById('address').value,
+    postcode: 'ME1 1AA'
+  };
+  try {
+    const res = await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data = await res.json();
+    if(data.error) alert('Booking failed: '+data.error);
+    else alert('Booking successful! QR code will be generated.');
+  } catch(err) { alert('Booking failed: '+err.message); }
+});
+
+// Diagnostics panel
+diagBtn.addEventListener('click', async ()=>{
+  diagnosticsPanel.classList.add('open');
+  try {
+    const res = await fetch('/api/diagnostics');
+    const data = await res.json();
+    diagOutput.textContent = JSON.stringify(data,null,2);
   } catch(err){
-    console.error('Failed to load services', err);
+    diagOutput.textContent = 'Error fetching diagnostics: '+err.message;
   }
-}
+});
+closeDiag.addEventListener('click', ()=>diagnosticsPanel.classList.remove('open'));
 
-// Booking placeholder
-function bookService(serviceId) {
-  alert(`Service ${serviceId} selected. Booking form popup will appear.`);
-}
-
-// Diagnostics
-async function runDiagnostics() {
-  const diagnostics = [];
-  const apis = ['services','bookings','customers'];
-  for (const api of apis) {
-    try {
-      const res = await fetch(`/api/${api}`);
-      const data = await res.json();
-      diagnostics.push({name: api.toUpperCase() + ' API', status:'OK', items:data.length || ''});
-    } catch(err) {
-      diagnostics.push({name: api.toUpperCase() + ' API', status:'FAIL', error:err.message});
-    }
-  }
-  return diagnostics;
-}
-
-async function showDiagnostics() {
-  const results = await runDiagnostics();
-  const content = document.getElementById('diag-content');
-  content.innerHTML = results.map(d => `
-    <div style="margin-bottom:5px;">
-      <strong>${d.name}:</strong> ${d.status} ${d.items ? `(${d.items} items)` : ''}
-      ${d.error ? `<span style="color:red">Error: ${d.error}</span>` : ''}
-    </div>
-  `).join('');
-  document.getElementById('diag-panel').style.bottom = '0';
-}
-
-// Event listeners
-document.getElementById('diag-btn').addEventListener('click', showDiagnostics);
-document.getElementById('diag-close').addEventListener('click',()=>{document.getElementById('diag-panel').style.bottom='-75%';});
+// Login modal
+loginBtn.addEventListener('click', ()=>loginModal.style.display='flex');
+closeLogin.addEventListener('click', ()=>loginModal.style.display='none');
 
 // Initial load
 loadServices();
-
-// Placeholder for booking form popup
-function openBookingForm() {
-  alert('Booking form popup opens here.');
-}
 </script>
 
 </body>
