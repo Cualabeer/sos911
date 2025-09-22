@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: mobile-mechanic-booking
+    env: node
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mechanic-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: mechanic-db
+    plan: free
