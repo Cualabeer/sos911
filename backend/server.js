@@ -1,4 +1,3 @@
-// backend/server.js
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -8,9 +7,9 @@ import { Pool } from "pg";
 import QRCode from "qrcode";
 import Joi from "joi";
 import rateLimit from "express-rate-limit";
-import bcrypt from "bcrypt";
 
 dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -25,12 +24,12 @@ app.use(cors());
 app.use(helmet());
 app.use(xss());
 
-const limiter = rateLimit({
+// Rate limiter
+app.use(rateLimit({
   windowMs: 60 * 1000,
   max: 60,
   message: "Too many requests, try again later",
-});
-app.use(limiter);
+}));
 
 // Serve frontend
 app.use(express.static("../frontend"));
@@ -39,10 +38,10 @@ app.use(express.static("../frontend"));
 const customerSchema = Joi.object({
   name: Joi.string().max(50).required(),
   email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
   phone: Joi.string().pattern(/^07\d{9}$/).required(),
   reg_plate: Joi.string().pattern(/^[A-Z]{2}\d{2} [A-Z]{3}$/).required(),
   address: Joi.string().max(100).required(),
+  password: Joi.string().min(6).required(),
 });
 
 const bookingSchema = Joi.object({
@@ -56,20 +55,22 @@ const bookingSchema = Joi.object({
 async function initDb() {
   const client = await pool.connect();
   try {
+    // Drop all tables first
     await client.query(`DROP TABLE IF EXISTS loyalty CASCADE`);
     await client.query(`DROP TABLE IF EXISTS bookings CASCADE`);
     await client.query(`DROP TABLE IF EXISTS services CASCADE`);
     await client.query(`DROP TABLE IF EXISTS customers CASCADE`);
 
+    // Create tables
     await client.query(`
       CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
         name VARCHAR(50) NOT NULL,
         email VARCHAR(50) UNIQUE NOT NULL,
-        password VARCHAR(200) NOT NULL,
         phone VARCHAR(20) NOT NULL,
         reg_plate VARCHAR(20) NOT NULL,
         address VARCHAR(100) NOT NULL,
+        password VARCHAR(100) NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
@@ -105,25 +106,23 @@ async function initDb() {
       );
     `);
 
-    // Insert default services
+    // Dummy data
     await client.query(`INSERT INTO services (name, category, description) VALUES 
       ('Oil Change', 'Maintenance', 'Full synthetic oil change'),
       ('Brake Inspection', 'Maintenance', 'Check and adjust brakes'),
       ('Battery Replacement', 'Repair', 'Replace old battery')
     `);
 
-    console.log("✅ Database initialized!");
+    console.log("✅ Database initialized with dummy data!");
   } catch (err) {
-    console.error("❌ DB init error:", err.message);
+    console.error("❌ Database init error:", err.message);
   } finally {
     client.release();
   }
 }
 
 // Routes
-
-// Diagnostics
-app.get("/api/diagnostics", async (req, res) => {
+app.get("/api/diagnostics", async (req,res)=>{
   try {
     const client = await pool.connect();
     const services = await client.query("SELECT COUNT(*) FROM services");
@@ -131,79 +130,84 @@ app.get("/api/diagnostics", async (req, res) => {
     const customers = await client.query("SELECT COUNT(*) FROM customers");
     client.release();
     res.json({
-      db_status: "connected",
+      db_status:"connected",
       services: services.rows[0].count,
       bookings: bookings.rows[0].count,
-      customers: customers.rows[0].count,
+      customers: customers.rows[0].count
     });
-  } catch (err) {
-    res.json({ db_status: "failed", error: err.message });
+  } catch(err){
+    res.json({db_status:"failed",error:err.message});
   }
 });
 
 // Customer registration
-app.post("/api/customers/register", async (req, res) => {
-  const { error, value } = customerSchema.validate(req.body);
-  if (error) return res.status(400).json({ error: error.details[0].message });
+app.post("/api/customers/register", async (req,res)=>{
+  const {error,value} = customerSchema.validate(req.body);
+  if(error) return res.status(400).json({error:error.details[0].message});
+
   try {
-    const hashed = await bcrypt.hash(value.password, 10);
-    const { name, email, phone, reg_plate, address } = value;
+    const {name,email,phone,reg_plate,address,password} = value;
     const result = await pool.query(
-      "INSERT INTO customers (name,email,password,phone,reg_plate,address) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,name,email",
-      [name, email, hashed, phone, reg_plate, address]
+      "INSERT INTO customers (name,email,phone,reg_plate,address,password) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
+      [name,email,phone,reg_plate,address,password]
     );
     res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch(err){
+    res.status(500).json({error:err.message});
   }
 });
 
 // Customer login
-app.post("/api/customers/login", async (req, res) => {
+app.post("/api/customers/login", async (req,res)=>{
   const { email, password } = req.body;
   try {
-    const result = await pool.query("SELECT * FROM customers WHERE email=$1", [email]);
-    if (result.rows.length === 0) return res.status(401).json({ error: "Invalid email/password" });
-    const user = result.rows[0];
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: "Invalid email/password" });
-    res.json({ id: user.id, name: user.name, email: user.email });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const result = await pool.query(
+      "SELECT * FROM customers WHERE email=$1 AND password=$2",
+      [email, password]
+    );
+    if(result.rows.length === 0) return res.status(401).json({error:"Invalid credentials"});
+    res.json(result.rows[0]);
+  } catch(err){
+    res.status(500).json({error:err.message});
   }
 });
 
-// Book a service
-app.post("/api/bookings", async (req, res) => {
-  const { error, value } = bookingSchema.validate(req.body);
-  if (error) return res.status(400).json({ error: error.details[0].message });
+// Booking service
+app.post("/api/bookings", async (req,res)=>{
+  const {error,value} = bookingSchema.validate(req.body);
+  if(error) return res.status(400).json({error:error.details[0].message});
+
   try {
-    const { customer_id, service_id, location, postcode } = value;
+    const {customer_id,service_id,location,postcode} = value;
     const qr_data = `booking:${customer_id}:${service_id}:${Date.now()}`;
     const qr_code = await QRCode.toDataURL(qr_data);
 
     const result = await pool.query(
       "INSERT INTO bookings (customer_id,service_id,location,postcode,qr_code) VALUES ($1,$2,$3,$4,$5) RETURNING *",
-      [customer_id, service_id, location, postcode, qr_code]
+      [customer_id,service_id,location,postcode,qr_code]
     );
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.json({...result.rows[0], qr_code});
+  } catch(err){
+    res.status(500).json({error:err.message});
   }
 });
 
-// Loyalty points
-app.get("/api/customers/:id/loyalty", async (req, res) => {
+// Get customer bookings
+app.get("/api/bookings/:customer_id", async (req,res)=>{
+  const {customer_id} = req.params;
   try {
-    const { id } = req.params;
-    const result = await pool.query("SELECT points FROM loyalty WHERE customer_id=$1", [id]);
-    res.json(result.rows[0] || { points: 0 });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const result = await pool.query(
+      "SELECT b.*, s.name as service_name, s.description as service_desc FROM bookings b JOIN services s ON s.id=b.service_id WHERE b.customer_id=$1 ORDER BY created_at DESC",
+      [customer_id]
+    );
+    res.json(result.rows);
+  } catch(err){
+    res.status(500).json({error:err.message});
   }
 });
 
-app.listen(PORT, async () => {
+// Start server
+app.listen(PORT, async ()=>{
   console.log(`🚀 Server running on port ${PORT}`);
   await initDb();
 });
