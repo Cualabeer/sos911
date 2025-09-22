@@ -1,165 +1,163 @@
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import pg from 'pg';
-import QRCode from 'qrcode';
+// backend/server.js
+import express from "express";
+import pg from "pg";
+import path from "path";
+import { fileURLToPath } from "url";
+import QRCode from "qrcode";
+import cors from "cors";
+import bodyParser from "body-parser";
+import { formatName, validateEmail, formatRegNumber, validateRegNumber, validateFutureDate } from "./validators.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json());
+const port = process.env.PORT || 3000;
 
-// Serve frontend
-app.use(express.static(path.join(__dirname, '../frontend')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "../frontend"))); // serve frontend
 
-// PostgreSQL pool
+// PostgreSQL connection from env variable
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
-// Utility to test DB connection
-async function testDb() {
-  try {
-    const client = await pool.connect();
-    await client.query('SELECT 1');
-    client.release();
-    return true;
-  } catch (err) {
-    return err.message;
-  }
-}
-
-// Initialize DB: drop tables, create tables, insert dummy data
+// ----------- DB Init -----------
 async function initDb() {
-  const client = await pool.connect();
   try {
-    // Drop all dependent tables
-    await client.query(`
+    // drop all tables first
+    await pool.query(`
       DROP TABLE IF EXISTS bookings CASCADE;
       DROP TABLE IF EXISTS services CASCADE;
       DROP TABLE IF EXISTS customers CASCADE;
-      DROP TABLE IF EXISTS loyalty CASCADE;
     `);
 
-    // Create tables
-    await client.query(`
+    // create tables
+    await pool.query(`
       CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
-        phone VARCHAR(20) NOT NULL,
-        email VARCHAR(100) UNIQUE,
-        loyalty_points INT DEFAULT 0
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password TEXT NOT NULL
       );
+
       CREATE TABLE services (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
-        category VARCHAR(50),
         description TEXT
       );
+
       CREATE TABLE bookings (
         id SERIAL PRIMARY KEY,
         customer_id INT REFERENCES customers(id),
         service_id INT REFERENCES services(id),
-        reg VARCHAR(10) NOT NULL,
-        address TEXT,
-        lat FLOAT,
-        lng FLOAT,
-        qr_code TEXT,
-        status VARCHAR(20) DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE loyalty (
-        id SERIAL PRIMARY KEY,
-        customer_id INT REFERENCES customers(id),
-        points INT DEFAULT 0
+        reg_number VARCHAR(10) NOT NULL,
+        service_date DATE NOT NULL,
+        qr_code TEXT
       );
     `);
 
-    // Insert dummy data
-    await client.query(`
-      INSERT INTO customers (name, phone, email, loyalty_points)
-      VALUES 
-        ('John Doe','07700123456','john@example.com',10),
-        ('Jane Smith','07700987654','jane@example.com',5),
-        ('Bob Johnson','07700234567','bob@example.com',0);
-        
-      INSERT INTO services (name, category, description)
-      VALUES 
-        ('Oil Change','Maintenance','Full synthetic oil change'),
-        ('Brake Check','Inspection','Check and replace brake pads if needed'),
-        ('Battery Replacement','Maintenance','Replace car battery with warranty');
-        
-      INSERT INTO bookings (customer_id, service_id, reg, address, lat, lng)
+    // insert dummy services
+    await pool.query(`
+      INSERT INTO services (name, description)
       VALUES
-        (1,1,'AB12CDE','1 High Street, Medway',51.378,-0.523),
-        (2,2,'XY34ZGH','2 Station Road, Medway',51.383,-0.515),
-        (3,3,'MN56OPQ','3 Market Street, Medway',51.374,-0.529);
+      ('Oil Change', 'Full oil replacement'),
+      ('Brake Check', 'Check and replace brake pads'),
+      ('Battery Replacement', 'Replace car battery');
     `);
 
-    console.log('✅ Database initialized with dummy data!');
+    // insert dummy customers
+    await pool.query(`
+      INSERT INTO customers (name,email,password)
+      VALUES
+      ('John Doe','john@example.com','test123'),
+      ('Jane Smith','jane@example.com','test123');
+    `);
+
+    // insert dummy bookings
+    await pool.query(`
+      INSERT INTO bookings (customer_id, service_id, reg_number, service_date)
+      VALUES
+      (1,1,'AB12 CDE','2025-10-01'),
+      (2,2,'XY34 ZAB','2025-10-02');
+    `);
+
+    console.log("✅ Database initialized");
   } catch (err) {
-    console.error('❌ Database init error:', err);
-  } finally {
-    client.release();
+    console.error("❌ Database init error:", err);
   }
 }
+initDb();
 
-// Diagnostics route
-app.get('/api/diagnostics', async (req, res) => {
-  const dbStatus = await testDb();
-  res.json({
-    database: dbStatus === true ? 'OK' : `FAIL: ${dbStatus}`,
-    servicesAPI: 'OK',
-    bookingsAPI: 'OK',
-    qrCode: 'OK'
-  });
+// ----------- Routes -----------
+
+// Diagnostics
+app.get("/api/db-status", async (req, res) => {
+  try {
+    const services = await pool.query("SELECT COUNT(*) FROM services");
+    const bookings = await pool.query("SELECT COUNT(*) FROM bookings");
+    res.json({
+      db: "connected",
+      services: services.rows[0].count,
+      bookings: bookings.rows[0].count,
+    });
+  } catch (err) {
+    res.status(500).json({ db: "error", error: err.message });
+  }
 });
 
-// Booking endpoint
-app.post('/api/bookings', async (req, res) => {
-  const { customer_id, service_id, reg, address, lat, lng } = req.body;
-  if (!customer_id || !service_id || !reg) return res.status(400).json({ error: 'Missing fields' });
+// Customer registration
+app.post("/api/register", async (req, res) => {
   try {
-    const qr = await QRCode.toDataURL(reg.toUpperCase());
+    let { name, email, password } = req.body;
+    name = formatName(name);
+    email = email.toLowerCase();
+
+    if (!validateEmail(email)) return res.status(400).json({ error: "Invalid email" });
+    if (!name) return res.status(400).json({ error: "Invalid name" });
+    if (password.length < 6) return res.status(400).json({ error: "Password too short" });
+
     await pool.query(
-      `INSERT INTO bookings (customer_id, service_id, reg, address, lat, lng, qr_code)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [customer_id, service_id, reg.toUpperCase(), address, lat, lng, qr]
+      "INSERT INTO customers (name,email,password) VALUES ($1,$2,$3)",
+      [name, email, password]
     );
-    res.json({ success: true, qr });
+    res.json({ message: "User registered successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Services list
-app.get('/api/services', async (req, res) => {
+// Booking
+app.post("/api/bookings", async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM services');
-    res.json(result.rows);
+    let { reg_number, service_date, service_id, customer_id } = req.body;
+    reg_number = formatRegNumber(reg_number);
+
+    if (!validateRegNumber(reg_number)) return res.status(400).json({ error: "Invalid UK reg number" });
+    if (!validateFutureDate(service_date)) return res.status(400).json({ error: "Invalid date" });
+
+    // generate QR
+    const qrCodeData = await QRCode.toDataURL(`${customer_id}_${service_id}_${reg_number}`);
+
+    await pool.query(
+      "INSERT INTO bookings (customer_id, service_id, reg_number, service_date, qr_code) VALUES ($1,$2,$3,$4,$5)",
+      [customer_id, service_id, reg_number, service_date, qrCodeData]
+    );
+
+    res.json({ message: "Booking created", qr_code: qrCodeData });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Bookings list
-app.get('/api/bookings', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM bookings');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+// serve frontend
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  await initDb(); // Initialize DB on start
+// ----------- Start server -----------
+app.listen(port, () => {
+  console.log(`🚀 Server running on port ${port}`);
 });
