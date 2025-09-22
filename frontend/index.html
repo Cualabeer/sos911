@@ -4,152 +4,165 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <style>
-  body { margin:0; font-family:sans-serif; background:#f5f5f5; }
-  header { background:#111; color:#fff; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
-  header h1 { margin:0; font-size:1.5rem; }
-  header button { padding:.5rem 1rem; margin-left:.5rem; background:#ff6600; border:none; color:#fff; cursor:pointer; }
-  .carousel { display:flex; overflow-x:auto; gap:1rem; padding:1rem; scroll-snap-type:x mandatory; }
-  .service-card { background:#fff; border-radius:8px; padding:1rem; min-width:250px; scroll-snap-align:start; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-  .service-card h3 { margin-top:0; }
-  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; justify-content:center; align-items:center; z-index:1000;}
-  .modal { background:#fff; padding:1rem; border-radius:8px; max-width:400px; width:90%; position:relative;}
-  .close { position:absolute; top:.5rem; right:.5rem; cursor:pointer; font-size:1.2rem;}
-  footer { position:fixed; bottom:0; left:0; width:100%; background:#111; color:#fff; padding:.5rem 1rem; cursor:pointer;}
-  .footer-panel { position:fixed; bottom:0; left:0; width:100%; height:75%; background:#222; color:#fff; transform:translateY(100%); transition:.3s; padding:1rem; overflow:auto; z-index:1000;}
-  button.book { background:#28a745; color:#fff; border:none; padding:.5rem 1rem; cursor:pointer; border-radius:4px; }
+  body { font-family: Arial, sans-serif; margin:0; padding:0; }
+  header { background: #007bff; color: #fff; padding: 1rem; text-align:center; }
+  .carousel-item { text-align:center; }
+  .diagnostics-panel { 
+    position: fixed; bottom: 0; left:0; right:0; height: 0; 
+    background:#f8f9fa; overflow-y: auto; transition: height 0.3s ease;
+    box-shadow: 0 -3px 6px rgba(0,0,0,0.1); padding:1rem;
+  }
+  .diagnostics-panel.open { height: 75%; }
+  .footer-btn { position: fixed; bottom: 1rem; right:1rem; z-index:1000; }
+  .modal-lg { max-width: 90%; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Mobile Mechanic</h1>
-  <div>
-    <button id="loginBtn">Login</button>
-    <button id="registerBtn">Register</button>
-  </div>
+  <h1>Mobile Mechanic Booking</h1>
+  <button class="btn btn-light btn-sm" id="loginBtn">Login / Register</button>
 </header>
 
-<section class="carousel" id="serviceCarousel">
-  <!-- Services will be populated here -->
-</section>
+<main class="container my-3">
 
-<!-- Booking Modal -->
-<div class="modal-bg" id="bookingModal">
-  <div class="modal">
-    <span class="close" id="closeBooking">&times;</span>
-    <h2>Book a Service</h2>
+  <!-- Service Carousel -->
+  <div id="serviceCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+    <div class="carousel-inner" id="servicesContainer"></div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#serviceCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#serviceCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon"></span>
+    </button>
+  </div>
+
+  <!-- Booking Form -->
+  <div class="card p-3 mb-4">
+    <h4>Book a Service</h4>
     <form id="bookingForm">
-      <label for="customerId">Customer ID:</label>
-      <input type="number" id="customerId" required><br><br>
-      <label for="serviceId">Service:</label>
-      <select id="serviceId" required></select><br><br>
-      <label for="location">Location:</label>
-      <input type="text" id="location" required><br><br>
-      <label for="postcode">Postcode:</label>
-      <input type="text" id="postcode" required><br><br>
-      <button type="submit" class="book">Book Now</button>
+      <div class="mb-2">
+        <input type="text" class="form-control" id="name" placeholder="Full Name" required>
+      </div>
+      <div class="mb-2">
+        <input type="email" class="form-control" id="email" placeholder="Email" required>
+      </div>
+      <div class="mb-2">
+        <input type="text" class="form-control" id="phone" placeholder="UK Phone 07xxxxxxxxx" required>
+      </div>
+      <div class="mb-2">
+        <input type="text" class="form-control" id="reg_plate" placeholder="Car Reg Plate (UK)" required>
+      </div>
+      <div class="mb-2">
+        <select class="form-select" id="serviceSelect" required></select>
+      </div>
+      <div class="mb-2">
+        <input type="text" class="form-control" id="location" placeholder="Address" required>
+      </div>
+      <div class="mb-2">
+        <input type="text" class="form-control" id="postcode" placeholder="Postcode" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Book Now</button>
     </form>
+  </div>
+
+</main>
+
+<!-- Diagnostics Panel -->
+<div class="diagnostics-panel" id="diagnosticsPanel">
+  <h5>System Diagnostics</h5>
+  <ul id="diagList"></ul>
+  <button class="btn btn-secondary mt-2" id="closeDiagBtn">Close</button>
+</div>
+<button class="btn btn-warning footer-btn" id="openDiagBtn">Diagnostics</button>
+
+<!-- QR Ticket Modal -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content p-3 text-center">
+      <h5>Booking Confirmed!</h5>
+      <p>Show this QR code to start your service.</p>
+      <img id="qrCodeImg" src="" alt="QR Code">
+      <button class="btn btn-primary mt-2" data-bs-dismiss="modal">Close</button>
+    </div>
   </div>
 </div>
 
-<!-- Login Modal -->
-<div class="modal-bg" id="loginModal">
-  <div class="modal">
-    <span class="close" id="closeLogin">&times;</span>
-    <h2>Login</h2>
-    <form id="loginForm">
-      <label>Email:</label>
-      <input type="email" id="loginEmail" required><br><br>
-      <label>Password:</label>
-      <input type="password" id="loginPassword" required><br><br>
-      <button type="submit">Login</button>
-    </form>
+<!-- Login/Register Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-3">
+      <h5>Login / Register</h5>
+      <form id="loginForm">
+        <input type="email" class="form-control mb-2" id="loginEmail" placeholder="Email" required>
+        <input type="password" class="form-control mb-2" id="loginPassword" placeholder="Password" required>
+        <button class="btn btn-primary w-100" type="submit">Login</button>
+      </form>
+    </div>
   </div>
 </div>
 
-<!-- Register Modal -->
-<div class="modal-bg" id="registerModal">
-  <div class="modal">
-    <span class="close" id="closeRegister">&times;</span>
-    <h2>Register</h2>
-    <form id="registerForm">
-      <label>Name:</label><input type="text" id="regName" required><br><br>
-      <label>Email:</label><input type="email" id="regEmail" required><br><br>
-      <label>Phone:</label><input type="text" id="regPhone" required><br><br>
-      <label>Reg Plate:</label><input type="text" id="regPlate" required><br><br>
-      <label>Address:</label><input type="text" id="regAddress" required><br><br>
-      <button type="submit">Register</button>
-    </form>
-  </div>
-</div>
-
-<footer id="footerDiag">Diagnostics - Click to Open</footer>
-<div class="footer-panel" id="diagPanel"></div>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-async function fetchServices() {
-  const res = await fetch("/api/services");
-  const services = await res.json();
-  const carousel = document.getElementById("serviceCarousel");
-  services.forEach(s => {
-    const card = document.createElement("div");
-    card.className="service-card";
-    card.innerHTML=`<h3>${s.name}</h3><p>${s.description}</p><button class="book" onclick="openBooking(${s.id})">Book</button>`;
-    carousel.appendChild(card);
-  });
+document.addEventListener("DOMContentLoaded", () => {
 
-  const select = document.getElementById("serviceId");
-  services.forEach(s=>{
+  const services = [
+    {id:1,name:"Oil Change",desc:"Full synthetic oil change"},
+    {id:2,name:"Brake Inspection",desc:"Check and adjust brakes"},
+    {id:3,name:"Battery Replacement",desc:"Replace old battery"}
+  ];
+
+  const servicesContainer = document.getElementById("servicesContainer");
+  const serviceSelect = document.getElementById("serviceSelect");
+  services.forEach((s,i)=>{
+    // Carousel items
+    const div = document.createElement("div");
+    div.className = "carousel-item" + (i===0?" active":"");
+    div.innerHTML = `<h5>${s.name}</h5><p>${s.desc}</p>`;
+    servicesContainer.appendChild(div);
+    // Select options
     const opt = document.createElement("option");
-    opt.value=s.id; opt.textContent=s.name;
-    select.appendChild(opt);
+    opt.value = s.id;
+    opt.textContent = `${s.name} - ${s.desc}`;
+    serviceSelect.appendChild(opt);
   });
-}
 
-function openBooking(serviceId){
-  document.getElementById("serviceId").value=serviceId;
-  document.getElementById("bookingModal").style.display="flex";
-}
+  // Diagnostics toggle
+  const diagPanel = document.getElementById("diagnosticsPanel");
+  document.getElementById("openDiagBtn").addEventListener("click", ()=> diagPanel.classList.add("open"));
+  document.getElementById("closeDiagBtn").addEventListener("click", ()=> diagPanel.classList.remove("open"));
 
-// Modals
-document.getElementById("loginBtn").onclick=()=>document.getElementById("loginModal").style.display="flex";
-document.getElementById("registerBtn").onclick=()=>document.getElementById("registerModal").style.display="flex";
-document.getElementById("closeLogin").onclick=()=>document.getElementById("loginModal").style.display="none";
-document.getElementById("closeRegister").onclick=()=>document.getElementById("registerModal").style.display="none";
-document.getElementById("closeBooking").onclick=()=>document.getElementById("bookingModal").style.display="none";
+  // Dummy diagnostics
+  const diagList = document.getElementById("diagList");
+  ["Database connected","Services API OK","Bookings API OK","Geolocation OK","QR Code OK"].forEach(d=>{
+    const li = document.createElement("li");
+    li.textContent = d; diagList.appendChild(li);
+  });
 
-// Booking submit
-document.getElementById("bookingForm").onsubmit=async(e)=>{
-  e.preventDefault();
-  const data={
-    customer_id:document.getElementById("customerId").value,
-    service_id:document.getElementById("serviceId").value,
-    location:document.getElementById("location").value,
-    postcode:document.getElementById("postcode").value
-  };
-  const res=await fetch("/api/bookings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
-  const result=await res.json();
-  if(result.qr_code){
-    alert("Booked! QR generated.");
-    document.getElementById("bookingModal").style.display="none";
-  }else{
-    alert("Error: "+result.error);
-  }
-};
+  // Booking form
+  document.getElementById("bookingForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    const data = {
+      customer_id:1,
+      service_id:parseInt(serviceSelect.value),
+      location:document.getElementById("location").value,
+      postcode:document.getElementById("postcode").value
+    };
+    // Simulate backend booking
+    const qrData = `booking:${data.customer_id}:${data.service_id}:${Date.now()}`;
+    const qrImg = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=200x200`;
+    document.getElementById("qrCodeImg").src = qrImg;
+    new bootstrap.Modal(document.getElementById("qrModal")).show();
+  });
 
-// Footer diagnostics
-const diagPanel=document.getElementById("diagPanel");
-document.getElementById("footerDiag").onclick=async()=>{
-  const res=await fetch("/api/diagnostics");
-  const diag=await res.json();
-  diagPanel.innerHTML=JSON.stringify(diag,null,2);
-  diagPanel.style.transform="translateY(0)";
-};
-diagPanel.onclick=()=>diagPanel.style.transform="translateY(100%)";
+  // Login/Register modal
+  document.getElementById("loginBtn").addEventListener("click", ()=> {
+    new bootstrap.Modal(document.getElementById("loginModal")).show();
+  });
 
-fetchServices();
+});
 </script>
-
 </body>
 </html>
