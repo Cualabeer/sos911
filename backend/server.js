@@ -8,26 +8,23 @@ import { Pool } from "pg";
 import QRCode from "qrcode";
 import Joi from "joi";
 import rateLimit from "express-rate-limit";
+import bcrypt from "bcrypt";
 
 dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// PostgreSQL pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
-// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
 app.use(xss());
 
-// Rate limiter
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
@@ -42,6 +39,7 @@ app.use(express.static("../frontend"));
 const customerSchema = Joi.object({
   name: Joi.string().max(50).required(),
   email: Joi.string().email().required(),
+  password: Joi.string().min(6).required(),
   phone: Joi.string().pattern(/^07\d{9}$/).required(),
   reg_plate: Joi.string().pattern(/^[A-Z]{2}\d{2} [A-Z]{3}$/).required(),
   address: Joi.string().max(100).required(),
@@ -54,22 +52,21 @@ const bookingSchema = Joi.object({
   postcode: Joi.string().pattern(/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i).required(),
 });
 
-// Initialize database
+// Init DB
 async function initDb() {
   const client = await pool.connect();
   try {
-    // Drop tables cascade
     await client.query(`DROP TABLE IF EXISTS loyalty CASCADE`);
     await client.query(`DROP TABLE IF EXISTS bookings CASCADE`);
     await client.query(`DROP TABLE IF EXISTS services CASCADE`);
     await client.query(`DROP TABLE IF EXISTS customers CASCADE`);
 
-    // Create tables
     await client.query(`
       CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
         name VARCHAR(50) NOT NULL,
         email VARCHAR(50) UNIQUE NOT NULL,
+        password VARCHAR(200) NOT NULL,
         phone VARCHAR(20) NOT NULL,
         reg_plate VARCHAR(20) NOT NULL,
         address VARCHAR(100) NOT NULL,
@@ -108,42 +105,24 @@ async function initDb() {
       );
     `);
 
-    // Dummy data
+    // Insert default services
     await client.query(`INSERT INTO services (name, category, description) VALUES 
       ('Oil Change', 'Maintenance', 'Full synthetic oil change'),
       ('Brake Inspection', 'Maintenance', 'Check and adjust brakes'),
       ('Battery Replacement', 'Repair', 'Replace old battery')
     `);
 
-    await client.query(`INSERT INTO customers (name,email,phone,reg_plate,address) VALUES
-      ('John Doe','john@example.com','07123456789','AB12 CDE','Medway ME1 1AA'),
-      ('Jane Smith','jane@example.com','07234567890','CD34 EFG','Medway ME2 2BB'),
-      ('Bob Brown','bob@example.com','07345678901','EF56 HIJ','Medway ME3 3CC')
-    `);
-
-    await client.query(`INSERT INTO bookings (customer_id, service_id, location, postcode) VALUES
-      (1,1,'Medway ME1 1AA','ME1 1AA'),
-      (1,2,'Medway ME1 1AB','ME1 1AB'),
-      (2,1,'Medway ME2 2BB','ME2 2BB'),
-      (2,3,'Medway ME2 2BC','ME2 2BC'),
-      (3,2,'Medway ME3 3CC','ME3 3CC'),
-      (3,3,'Medway ME3 3CD','ME3 3CD'),
-      (1,3,'Medway ME1 1AC','ME1 1AC')
-    `);
-
-    await client.query(`INSERT INTO loyalty (customer_id, points) VALUES
-      (1,10),(2,5),(3,0)
-    `);
-
-    console.log("✅ Database initialized with dummy data!");
+    console.log("✅ Database initialized!");
   } catch (err) {
-    console.error("❌ Database init error:", err.message);
+    console.error("❌ DB init error:", err.message);
   } finally {
     client.release();
   }
 }
 
 // Routes
+
+// Diagnostics
 app.get("/api/diagnostics", async (req, res) => {
   try {
     const client = await pool.connect();
@@ -163,15 +142,15 @@ app.get("/api/diagnostics", async (req, res) => {
 });
 
 // Customer registration
-app.post("/api/customers", async (req, res) => {
+app.post("/api/customers/register", async (req, res) => {
   const { error, value } = customerSchema.validate(req.body);
   if (error) return res.status(400).json({ error: error.details[0].message });
-
   try {
+    const hashed = await bcrypt.hash(value.password, 10);
     const { name, email, phone, reg_plate, address } = value;
     const result = await pool.query(
-      "INSERT INTO customers (name,email,phone,reg_plate,address) VALUES ($1,$2,$3,$4,$5) RETURNING *",
-      [name, email, phone, reg_plate, address]
+      "INSERT INTO customers (name,email,password,phone,reg_plate,address) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,name,email",
+      [name, email, hashed, phone, reg_plate, address]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -179,11 +158,25 @@ app.post("/api/customers", async (req, res) => {
   }
 });
 
-// Booking service
+// Customer login
+app.post("/api/customers/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const result = await pool.query("SELECT * FROM customers WHERE email=$1", [email]);
+    if (result.rows.length === 0) return res.status(401).json({ error: "Invalid email/password" });
+    const user = result.rows[0];
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ error: "Invalid email/password" });
+    res.json({ id: user.id, name: user.name, email: user.email });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Book a service
 app.post("/api/bookings", async (req, res) => {
   const { error, value } = bookingSchema.validate(req.body);
   if (error) return res.status(400).json({ error: error.details[0].message });
-
   try {
     const { customer_id, service_id, location, postcode } = value;
     const qr_data = `booking:${customer_id}:${service_id}:${Date.now()}`;
@@ -193,13 +186,23 @@ app.post("/api/bookings", async (req, res) => {
       "INSERT INTO bookings (customer_id,service_id,location,postcode,qr_code) VALUES ($1,$2,$3,$4,$5) RETURNING *",
       [customer_id, service_id, location, postcode, qr_code]
     );
-    res.json({ ...result.rows[0], qr_code });
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Start server
+// Loyalty points
+app.get("/api/customers/:id/loyalty", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query("SELECT points FROM loyalty WHERE customer_id=$1", [id]);
+    res.json(result.rows[0] || { points: 0 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   await initDb();
