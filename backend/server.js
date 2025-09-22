@@ -171,4 +171,4 @@ app.post("/api/bookings", async (req,res) => {
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   await initDb();
-});
+}); 
