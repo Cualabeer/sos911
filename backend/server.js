@@ -1,38 +1,29 @@
-import express from "express";
-import { Pool } from "pg";
-import cors from "cors";
-import QRCode from "qrcode";
-import bodyParser from "body-parser";
-import path from "path";
-import { fileURLToPath } from "url";
-import dotenv from "dotenv";
+import express from 'express';
+import pg from 'pg';
+import dotenv from 'dotenv';
+import QRCode from 'qrcode';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const { Pool } = pg;
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "../frontend")));
+app.use(express.json());
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
-// Database initialization
 async function initDb() {
   try {
-    // Drop all tables
+    // Drop all tables first
     await pool.query(`
-      DROP TABLE IF EXISTS bookings CASCADE;
-      DROP TABLE IF EXISTS customers CASCADE;
-      DROP TABLE IF EXISTS services CASCADE;
       DROP TABLE IF EXISTS loyalty CASCADE;
+      DROP TABLE IF EXISTS bookings CASCADE;
+      DROP TABLE IF EXISTS services CASCADE;
+      DROP TABLE IF EXISTS customers CASCADE;
     `);
 
     // Create tables
@@ -41,7 +32,7 @@ async function initDb() {
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         email VARCHAR(150) NOT NULL UNIQUE,
-        phone VARCHAR(15) NOT NULL,
+        phone VARCHAR(20) NOT NULL,
         password VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
       );
@@ -49,16 +40,17 @@ async function initDb() {
       CREATE TABLE services (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
+        category VARCHAR(50) NOT NULL,
         description TEXT,
-        category VARCHAR(50),
-        price NUMERIC(10,2)
+        price NUMERIC(10,2) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
       );
 
       CREATE TABLE bookings (
         id SERIAL PRIMARY KEY,
         customer_id INT REFERENCES customers(id) ON DELETE CASCADE,
         service_id INT REFERENCES services(id) ON DELETE CASCADE,
-        number_plate VARCHAR(10) NOT NULL,
+        number_plate VARCHAR(15) NOT NULL,
         address TEXT NOT NULL,
         lat NUMERIC(10,6),
         lng NUMERIC(10,6),
@@ -70,110 +62,97 @@ async function initDb() {
       CREATE TABLE loyalty (
         id SERIAL PRIMARY KEY,
         customer_id INT REFERENCES customers(id) ON DELETE CASCADE,
-        points INT DEFAULT 0
+        points INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
       );
     `);
 
-    // Dummy services
-    await pool.query(`
-      INSERT INTO services (name, description, category, price) VALUES
-      ('Oil Change', 'Full synthetic oil change', 'Maintenance', 49.99),
-      ('Brake Replacement', 'Front brake pads replacement', 'Repair', 129.99),
-      ('Battery Check', 'Battery health check', 'Maintenance', 29.99),
-      ('Air Filter', 'Engine air filter replacement', 'Maintenance', 19.99),
-      ('Coolant Flush', 'Radiator and coolant flush', 'Maintenance', 69.99)
-    `);
+    console.log('✅ Database tables created successfully.');
 
-    // Dummy customers
-    await pool.query(`
-      INSERT INTO customers (name, email, phone, password) VALUES
-      ('John Doe','john@example.com','07123456789','password1'),
-      ('Jane Smith','jane@example.com','07234567890','password2'),
-      ('Bob Brown','bob@example.com','07345678901','password3')
-    `);
+    // Insert dummy services
+    const services = [
+      { name: 'Oil Change', category: 'Engine', description: 'Full engine oil replacement', price: 49.99 },
+      { name: 'Brake Pad Replacement', category: 'Brakes', description: 'Replace front & rear brake pads', price: 89.99 },
+      { name: 'Battery Check', category: 'Electrical', description: 'Check & replace battery if needed', price: 39.99 },
+    ];
 
-    // Dummy bookings
+    for (const s of services) {
+      await pool.query(
+        'INSERT INTO services (name, category, description, price) VALUES ($1, $2, $3, $4)',
+        [s.name, s.category, s.description, s.price]
+      );
+    }
+
+    console.log('✅ Dummy services inserted.');
+
+    // Insert dummy customers
+    const customers = [
+      { name: 'John Doe', email: 'john@example.com', phone: '07123456789', password: 'hashedpass1' },
+      { name: 'Jane Smith', email: 'jane@example.com', phone: '07234567890', password: 'hashedpass2' },
+      { name: 'Bob Brown', email: 'bob@example.com', phone: '07345678901', password: 'hashedpass3' },
+    ];
+
+    for (const c of customers) {
+      await pool.query(
+        'INSERT INTO customers (name, email, phone, password) VALUES ($1, $2, $3, $4)',
+        [c.name, c.email, c.phone, c.password]
+      );
+    }
+
+    console.log('✅ Dummy customers inserted.');
+
+    // Insert dummy bookings with QR codes
     const bookings = [
-      [1,1,'AB12CDE','10 Medway St, ME1 1AA',51.389,0.518,'','pending'],
-      [2,2,'CD34EFG','22 Medway Rd, ME2 2BB',51.392,0.521,'','pending'],
-      [3,3,'EF56GHI','35 Medway Ln, ME3 3CC',51.395,0.524,'','pending'],
-      [1,2,'GH78IJK','50 Medway Ave, ME4 4DD',51.398,0.527,'','pending'],
-      [2,3,'IJ90KLM','5 Medway Close, ME5 5EE',51.401,0.530,'','pending'],
-      [3,1,'KL12MNO','12 Medway Park, ME6 6FF',51.404,0.533,'','pending'],
-      [1,3,'MN34OPQ','20 Medway Court, ME7 7GG',51.407,0.536,'','pending']
+      { customer_id: 1, service_id: 1, number_plate: 'AB12CDE', address: '10 High Street, Medway', lat: 51.3860, lng: 0.5230 },
+      { customer_id: 2, service_id: 2, number_plate: 'XY34ZUV', address: '20 Main Road, Medway', lat: 51.3810, lng: 0.5280 },
+      { customer_id: 3, service_id: 3, number_plate: 'LM56NOP', address: '5 Station Lane, Medway', lat: 51.3835, lng: 0.5295 },
     ];
 
     for (const b of bookings) {
-      const qr = await QRCode.toDataURL(`${b[2]}-${Date.now()}`);
+      const qrCodeData = `Booking:${b.customer_id}-${b.service_id}-${b.number_plate}`;
+      const qr_code = await QRCode.toDataURL(qrCodeData);
       await pool.query(
-        `INSERT INTO bookings (customer_id, service_id, number_plate, address, lat, lng, qr_code, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [...b.slice(0,7), qr]
+        `INSERT INTO bookings (customer_id, service_id, number_plate, address, lat, lng, qr_code)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [b.customer_id, b.service_id, b.number_plate, b.address, b.lat, b.lng, qr_code]
       );
     }
 
-    console.log("✅ Database initialized with dummy data");
+    console.log('✅ Dummy bookings with QR codes inserted.');
+
   } catch (err) {
-    console.error("❌ Database init error:", err.message);
+    console.error('❌ Database init error:', err.message);
   }
 }
 
-initDb();
-
-// API Routes
-app.get("/api/db-status", async (req,res) => {
+app.get('/db-status', async (req, res) => {
   try {
-    await pool.query("SELECT 1");
-    res.json({ status:"OK", message:"Database connected" });
+    await pool.query('SELECT 1');
+    res.json({ status: 'connected' });
   } catch (err) {
-    res.json({ status:"FAIL", message:err.message });
+    res.json({ status: 'error', error: err.message });
   }
 });
 
-app.get("/api/services", async (req,res) => {
+app.get('/services', async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM services");
-    res.json(rows);
-  } catch(err) {
+    const result = await pool.query('SELECT * FROM services');
+    res.json(result.rows);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/bookings", async (req,res) => {
+app.get('/bookings', async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT b.*, c.name AS customer_name, s.name AS service_name FROM bookings b JOIN customers c ON b.customer_id=c.id JOIN services s ON b.service_id=s.id");
-    res.json(rows);
-  } catch(err) {
+    const result = await pool.query('SELECT * FROM bookings');
+    res.json(result.rows);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post("/api/bookings", async (req,res) => {
-  try {
-    const { customer_id, service_id, number_plate, address, lat, lng } = req.body;
-
-    if(!customer_id || !service_id || !number_plate || !address) {
-      return res.status(400).json({ error:"Missing fields" });
-    }
-
-    const formattedPlate = number_plate.toUpperCase().replace(/\s+/g,''); // UK style basic
-
-    const qr = await QRCode.toDataURL(`${formattedPlate}-${Date.now()}`);
-
-    const result = await pool.query(
-      `INSERT INTO bookings (customer_id, service_id, number_plate, address, lat, lng, qr_code, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING *`,
-       [customer_id, service_id, formattedPlate, address, lat, lng, qr]
-    );
-
-    res.json({ success:true, booking: result.rows[0] });
-  } catch(err) {
-    res.status(500).json({ error: err.message });
-  }
+app.listen(3000, async () => {
+  console.log('🚀 Server running on port 3000');
+  await initDb();
 });
-
-// Serve frontend
-app.get("/", (req,res) => {
-  res.sendFile(path.join(__dirname,"../frontend/index.html"));
-});
-
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
