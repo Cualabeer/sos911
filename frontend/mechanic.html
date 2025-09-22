@@ -2,42 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mechanic Dashboard</title>
-  <link rel="stylesheet" href="css/main.css">
+  <title>Mechanic Dashboard | Medway Mechanics</title>
+  <meta name="description" content="Mechanic login dashboard for managing bookings and diagnosing customer jobs.">
+  <meta name="keywords" content="mechanic dashboard, job management, QR code scan, diagnostics">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="canonical" href="https://yourdomain.com/mechanic">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Medway Mechanic Dashboard">
+  <meta property="og:description" content="Mechanics manage bookings, scan QR codes, and start jobs.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://yourdomain.com/mechanic">
+  <meta property="og:image" content="https://yourdomain.com/assets/cover.jpg">
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "AutoRepair",
+    "name": "Medway Mechanic Portal",
+    "description": "Mechanic job management and customer booking diagnostics.",
+    "url": "https://yourdomain.com/mechanic"
+  }
+  </script>
 </head>
 <body>
-  <div id="dashboard">
-    <h1 class="text-center">Mechanic Dashboard</h1>
-    
-    <section id="jobDetails">
-      <h2>Active Job</h2>
-      <p>Scan QR or Enter Number Plate to Start Job</p>
-      <input type="text" id="jobPlate" placeholder="Enter Plate">
-      <button id="startJobBtn">Start Job</button>
-    </section>
-
-    <section id="serviceList">
-      <h2>Available Services</h2>
-      <ul id="services"></ul>
-    </section>
-
-    <section id="bookings">
-      <h2>Bookings</h2>
-      <table id="bookingTable">
-        <thead>
-          <tr><th>Customer</th><th>Service</th><th>Plate</th><th>Status</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-  </div>
-
-  <!-- Diagnostics Preloader -->
-  <div id="diagPopup" class="diag-popup hidden">
-    <h2>Running System Diagnostics…</h2>
-    <div id="diagResults"></div>
-  </div>
-
-  <script src="js/mechanic.js"></script>
+  <h1>Mechanic Dashboard</h1>
+  <div id="diagnostics"></div>
+  <script src="/scripts/mechanic.js"></script>
 </body>
 </html>
