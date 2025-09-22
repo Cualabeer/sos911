@@ -2,154 +2,232 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Customer Booking</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mechanic Service Booking</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-  html, body { height:100%; margin:0; }
-  #bookingForm { max-width: 700px; margin: auto; padding:2rem; }
-  #diagPanel { position:fixed; bottom:0; left:0; width:100%; background:#f8f9fa; max-height:50%; overflow:auto; border-top:2px solid #007bff; display:none; }
-  #diagPanel pre { margin:0; padding:1rem; font-size:0.85rem; }
-  #map { height:200px; margin-bottom:1rem; }
+  body { font-family: sans-serif; margin:0; padding:0; }
+  #preloader { position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;z-index:9999;padding-top:40px; }
+  #diagList { list-style:none;padding:0;margin:0;width:90%;max-width:500px;overflow-y:auto;max-height:60vh;border:1px solid #ddd;border-radius:8px;padding:10px; }
+  #progressBarContainer { width:90%; max-width:500px; height:20px;border:1px solid #ddd;border-radius:10px; overflow:hidden;margin-bottom:20px; }
+  #progressBar { width:0%;height:100%;background:#007bff; }
+  .service-card { margin-bottom:20px; }
+  .faq-item { margin-bottom:10px; }
+  footer { background:#f8f9fa;padding:20px;text-align:center; font-size:0.9rem; }
 </style>
 </head>
 <body>
-<div id="bookingForm" class="container">
-  <h2 class="mb-4 text-center">Book a Service</h2>
-  <form id="form">
-    <div class="mb-3">
-      <label>Name</label>
-      <input type="text" id="name" class="form-control" required>
-    </div>
-    <div class="mb-3">
-      <label>Email</label>
-      <input type="email" id="email" class="form-control" required>
-    </div>
-    <div class="mb-3">
-      <label>Phone</label>
-      <input type="tel" id="phone" class="form-control" pattern="^07[0-9]{9}$" required>
-    </div>
-    <div class="mb-3">
-      <label>Number Plate</label>
-      <input type="text" id="numberPlate" class="form-control" required>
-    </div>
-    <div class="mb-3">
-      <label>Service</label>
-      <select id="service" class="form-select" required></select>
-    </div>
-    <div class="mb-3">
-      <label>Address</label>
-      <input type="text" id="address" class="form-control" required>
-    </div>
-    <div id="map"></div>
-    <button type="submit" class="btn btn-primary w-100">Book Service</button>
-  </form>
+
+<!-- Preloader -->
+<div id="preloader">
+  <button id="closeDiag" class="btn btn-danger btn-sm" style="position:absolute;top:10px;right:10px;">Close</button>
+  <div id="progressBarContainer"><div id="progressBar"></div></div>
+  <h2>Running System Diagnostics...</h2>
+  <ul id="diagList"></ul>
 </div>
 
-<!-- Diagnostics footer -->
-<div class="text-center p-2 bg-light border-top">
-  <span id="dbStatus">DB: checking...</span>
-  <button id="diagBtn" class="btn btn-sm btn-info ms-2">Diagnostics</button>
-</div>
+<!-- Main Site -->
+<div id="mainSite" style="display:none;">
 
-<div id="diagPanel">
-  <button id="closeDiag" class="btn btn-sm btn-danger m-2">Close</button>
-  <pre id="diagContent"></pre>
-</div>
+  <!-- Hero -->
+  <section class="p-5 text-center bg-primary text-white">
+    <h1>Welcome to SOS Mechanics</h1>
+    <p>Book your car service quickly and efficiently.</p>
+  </section>
 
-<!-- QR Modal -->
-<div class="modal fade" id="qrModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content p-3 text-center">
-      <h5>Booking QR Code</h5>
-      <img id="qrImg" alt="QR Code"/>
-      <button class="btn btn-secondary mt-3" data-bs-dismiss="modal">Close</button>
+  <!-- Services -->
+  <section class="p-5">
+    <h2 class="mb-4">Our Services</h2>
+    <div class="row" id="servicesContainer">
+      <!-- Dynamically filled -->
     </div>
-  </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="p-5 bg-light">
+    <h2 class="mb-4">Frequently Asked Questions</h2>
+    <div class="accordion" id="faqAccordion">
+      <div class="accordion-item faq-item">
+        <h2 class="accordion-header" id="faq1">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse1">How do I book?</button>
+        </h2>
+        <div id="collapse1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+          <div class="accordion-body">Use the booking form below. Fill in all fields and submit.</div>
+        </div>
+      </div>
+      <div class="accordion-item faq-item">
+        <h2 class="accordion-header" id="faq2">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse2">Where do you operate?</button>
+        </h2>
+        <div id="collapse2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+          <div class="accordion-body">We cover the Medway area and surroundings.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Booking Form -->
+  <section class="p-5">
+    <h2 class="mb-4">Book a Service</h2>
+    <form id="bookingForm" class="row g-3 needs-validation" novalidate>
+      <div class="col-md-6">
+        <label for="name" class="form-label">Full Name</label>
+        <input type="text" class="form-control" id="name" required>
+        <div class="invalid-feedback">Please enter your name.</div>
+      </div>
+      <div class="col-md-6">
+        <label for="phone" class="form-label">Phone (UK)</label>
+        <input type="tel" class="form-control" id="phone" pattern="^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$" required>
+        <div class="invalid-feedback">Enter a valid UK phone number.</div>
+      </div>
+      <div class="col-md-6">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" required>
+        <div class="invalid-feedback">Enter a valid email address.</div>
+      </div>
+      <div class="col-md-6">
+        <label for="reg" class="form-label">Number Plate (UK)</label>
+        <input type="text" class="form-control" id="reg" required>
+        <div class="invalid-feedback">Enter a valid UK number plate.</div>
+      </div>
+      <div class="col-md-12">
+        <label for="address" class="form-label">Address</label>
+        <input type="text" class="form-control" id="address" required>
+        <div class="invalid-feedback">Enter your address.</div>
+      </div>
+      <div class="col-md-12">
+        <label for="service" class="form-label">Select Service</label>
+        <select class="form-select" id="service" required></select>
+        <div class="invalid-feedback">Select a service.</div>
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary">Book Service</button>
+      </div>
+    </form>
+  </section>
+
+  <footer>
+    <span id="dbStatus">Database status: Checking...</span>
+    <button class="btn btn-sm btn-secondary" id="runDiag">Run Diagnostics</button>
+  </footer>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-let lat, lng;
+const preloader = document.getElementById('preloader');
+const mainSite = document.getElementById('mainSite');
+const dbStatusEl = document.getElementById('dbStatus');
+const serviceSelect = document.getElementById('service');
 
-// Load services
-async function loadServices() {
-  const res = await fetch('/api/services');
-  const services = await res.json();
-  const sel = document.getElementById('service');
-  services.forEach(s => sel.add(new Option(s.name, s.id)));
+// Diagnostics preloader
+async function runPreloader(){
+    const diagList = document.getElementById('diagList');
+    const progressBar = document.getElementById('progressBar');
+    const results = [];
+
+    function updateDiag(){
+        diagList.innerHTML = '';
+        results.forEach(item=>{
+            const li = document.createElement('li');
+            li.textContent = item.text;
+            li.style.color = item.ok ? 'green' : 'red';
+            diagList.appendChild(li);
+        });
+        progressBar.style.width = Math.round((results.length/7)*100) + '%';
+        diagList.scrollTop = diagList.scrollHeight;
+    }
+
+    function pushResult(text, ok=true){
+        results.push({text:ok?'✅ '+text:'❌ '+text, ok});
+        updateDiag();
+    }
+
+    // Check database and APIs
+    try {
+        const res = await fetch('/api/db-status');
+        const data = await res.json();
+        pushResult(`Database connected`, data.connected);
+        pushResult(`Services loaded: ${data.services || 0}`);
+        pushResult(`Bookings loaded: ${data.bookings || 0}`);
+    } catch(e){ pushResult(`Database/API error: ${e.message}`, false); }
+
+    // Geolocation
+    if(navigator.geolocation){
+        await new Promise(resolve=>{
+            navigator.geolocation.getCurrentPosition(
+                pos=>{
+                    pushResult(`Location: Lat ${pos.coords.latitude.toFixed(6)}, Lng ${pos.coords.longitude.toFixed(6)}`);
+                    resolve();
+                },
+                err=>{
+                    pushResult(`Location Error: ${err.message}`, false);
+                    resolve();
+                }
+            );
+        });
+    }
+
+    // Feature checks
+    pushResult(`LocalStorage supported`, !!window.localStorage);
+    pushResult(`Cookies enabled`, navigator.cookieEnabled);
+    pushResult(`Fetch API supported`, !!window.fetch);
+    try {
+        const canvas = document.createElement('canvas');
+        if(!canvas.getContext) throw new Error();
+        pushResult('QR Code Generation supported');
+    } catch(e){ pushResult(`QR Code Generation failed`, false); }
+
+    // Done
+    setTimeout(()=>{
+        preloader.style.display='none';
+        mainSite.style.display='block';
+    }, 500);
 }
 
-// DB Status
-async function checkDB() {
-  try {
-    const res = await fetch('/api/db-status');
-    const data = await res.json();
-    document.getElementById('dbStatus').textContent = data.connected ? 'DB: Connected ✅' : 'DB: ❌ ' + data.error;
-  } catch(e){
-    document.getElementById('dbStatus').textContent = 'DB: ❌ ' + e.message;
-  }
+// Populate services dropdown
+async function loadServices(){
+    try {
+        const res = await fetch('/api/services');
+        const data = await res.json();
+        data.forEach(s=>{
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            serviceSelect.appendChild(opt);
+        });
+    } catch(e){ console.error('Services load failed', e); }
 }
 
-// Diagnostics panel
-document.getElementById('diagBtn').onclick = async ()=>{
-  const panel = document.getElementById('diagPanel');
-  panel.style.display='block';
-  const diag = [];
-  try{
-    const db = await fetch('/api/db-status').then(r=>r.json());
-    diag.push('Database Connection: ' + (db.connected?'OK ✅':'FAIL ❌'));
-    const serv = await fetch('/api/services').then(r=>r.json());
-    diag.push('Services Loaded: ' + serv.length);
-    const book = await fetch('/api/bookings').then(r=>r.json());
-    diag.push('Bookings Loaded: ' + book.length);
-    diag.push('Geolocation: Lat='+lat+', Lng='+lng);
-  }catch(e){ diag.push('Error: '+e.message);}
-  document.getElementById('diagContent').textContent = diag.join('\n');
-};
-document.getElementById('closeDiag').onclick = ()=>{document.getElementById('diagPanel').style.display='none';}
-
-// Geolocation + map
-navigator.geolocation.getCurrentPosition(pos=>{
-  lat=pos.coords.latitude; lng=pos.coords.longitude;
-  document.getElementById('address').value = 'Lat:'+lat+', Lng:'+lng;
-  const map = L.map('map').setView([lat,lng],15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-  L.marker([lat,lng]).addTo(map).bindPopup('Your Location').openPopup();
+// Booking form validation
+const form = document.getElementById('bookingForm');
+form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    if(!form.checkValidity()){ form.classList.add('was-validated'); return; }
+    // Post booking
+    const bookingData = {
+        name: document.getElementById('name').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        reg: document.getElementById('reg').value.toUpperCase(),
+        address: document.getElementById('address').value,
+        serviceId: document.getElementById('service').value
+    };
+    try {
+        const res = await fetch('/api/bookings', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(bookingData)
+        });
+        const data = await res.json();
+        alert(data.message || 'Booking successful');
+    } catch(e){ alert('Booking failed: '+e.message); }
 });
 
-// Booking form
-document.getElementById('form').onsubmit = async e=>{
-  e.preventDefault();
-  const np = document.getElementById('numberPlate');
-  np.value = np.value.toUpperCase().replace(/\s+/g,''); // auto caps & remove spaces
-  const body = {
-    name: document.getElementById('name').value,
-    email: document.getElementById('email').value,
-    phone: document.getElementById('phone').value,
-    numberPlate: np.value,
-    address: document.getElementById('address').value,
-    lat, lng,
-    serviceId: document.getElementById('service').value
-  };
-  const res = await fetch('/api/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const data = await res.json();
-  if(data.success){
-    const qrRes = await fetch(`/api/qr?bookingId=${data.id}`);
-    const qrBlob = await qrRes.blob();
-    document.getElementById('qrImg').src = URL.createObjectURL(qrBlob);
-    const modal = new bootstrap.Modal(document.getElementById('qrModal'));
-    modal.show();
-  } else {
-    alert('Booking failed: '+data.error);
-  }
-};
-
-// Init
-loadServices();
-checkDB();
+document.getElementById('closeDiag').addEventListener('click', ()=>preloader.style.display='none');
+window.addEventListener('DOMContentLoaded', ()=>{
+    runPreloader();
+    loadServices();
+});
 </script>
 </body>
 </html>
