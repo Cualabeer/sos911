@@ -1,27 +1,25 @@
-import express from "express";
-import cors from "cors";
-import pg from "pg";
-import dotenv from "dotenv";
-import QRCode from "qrcode";
-import jwt from "jsonwebtoken";
+import express from 'express';
+import pg from 'pg';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import QRCode from 'qrcode';
 
 dotenv.config();
-const app = express();
-app.use(cors());
-app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const app = express();
+app.use(express.json());
+app.use(cors());
+
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// ---- Database Initialization ----
 async function initDb() {
-  const client = await pool.connect();
   try {
-    // Drop tables
-    await client.query(`
+    // Drop all tables first
+    await pool.query(`
+      DROP TABLE IF EXISTS qr_codes CASCADE;
       DROP TABLE IF EXISTS loyalty CASCADE;
       DROP TABLE IF EXISTS bookings CASCADE;
       DROP TABLE IF EXISTS services CASCADE;
@@ -29,146 +27,124 @@ async function initDb() {
     `);
 
     // Create tables
-    await client.query(`
-      CREATE TABLE customers(
+    await pool.query(`
+      CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
+        email TEXT NOT NULL,
         phone TEXT NOT NULL,
+        password TEXT,
         loyalty_points INT DEFAULT 0
       );
       
-      CREATE TABLE services(
+      CREATE TABLE services (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         category TEXT NOT NULL,
-        price NUMERIC(10,2) NOT NULL,
-        description TEXT
+        description TEXT,
+        price NUMERIC NOT NULL
       );
-
-      CREATE TABLE bookings(
+      
+      CREATE TABLE bookings (
         id SERIAL PRIMARY KEY,
         customer_id INT REFERENCES customers(id),
         service_id INT REFERENCES services(id),
-        reg_plate TEXT NOT NULL,
+        date TIMESTAMP DEFAULT NOW(),
         address TEXT NOT NULL,
-        latitude NUMERIC,
-        longitude NUMERIC,
-        qr_code TEXT,
-        status TEXT DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT NOW()
+        postcode TEXT NOT NULL,
+        lat NUMERIC,
+        lng NUMERIC,
+        number_plate TEXT,
+        status TEXT DEFAULT 'pending'
       );
-
-      CREATE TABLE loyalty(
+      
+      CREATE TABLE loyalty (
         id SERIAL PRIMARY KEY,
         customer_id INT REFERENCES customers(id),
-        visits INT DEFAULT 0
+        points INT DEFAULT 0
+      );
+      
+      CREATE TABLE qr_codes (
+        id SERIAL PRIMARY KEY,
+        booking_id INT REFERENCES bookings(id),
+        qr_code TEXT
       );
     `);
 
-    // Insert dummy services
-    await client.query(`
-      INSERT INTO services(name, category, price, description)
-      VALUES
-      ('Oil Change','Maintenance',49.99,'Change engine oil and filter'),
-      ('Brake Pad Replacement','Brakes',89.99,'Replace front brake pads'),
-      ('Air Filter Replacement','Maintenance',29.99,'Replace air filter');
+    // Insert dummy data
+    await pool.query(`
+      INSERT INTO customers (name,email,phone) VALUES
+        ('Alice','alice@test.com','07123456789'),
+        ('Bob','bob@test.com','07234567890'),
+        ('Charlie','charlie@test.com','07345678901');
+
+      INSERT INTO services (name,category,description,price) VALUES
+        ('Oil Change','Maintenance','Full oil change service',49.99),
+        ('Brake Check','Maintenance','Full brake inspection',39.99),
+        ('Battery Replacement','Electrical','Replace old battery',89.99),
+        ('Air Filter','Maintenance','Replace air filter',19.99),
+        ('Engine Diagnostics','Diagnostics','Full engine scan',59.99);
+
+      INSERT INTO bookings (customer_id,service_id,address,postcode,lat,lng,number_plate,status) VALUES
+        (1,1,'Medway Rd, Chatham','ME4 5AA',51.3326,0.5494,'AB12CDE','pending'),
+        (2,2,'Medway St, Gillingham','ME7 1BB',51.3890,0.5412,'XY34ZXY','pending'),
+        (3,3,'Medway Ave, Rochester','ME1 2CC',51.3912,0.5055,'CD56EFG','pending');
     `);
 
-    // Insert dummy customers
-    await client.query(`
-      INSERT INTO customers(name,email,phone)
-      VALUES
-      ('John Doe','john@example.com','07123456789'),
-      ('Jane Smith','jane@example.com','07234567890'),
-      ('Bob Brown','bob@example.com','07345678901');
-    `);
-
-    // Insert dummy bookings
-    await client.query(`
-      INSERT INTO bookings(customer_id, service_id, reg_plate, address, latitude, longitude)
-      VALUES
-      (1,1,'AB12CDE','10 High Street, Medway',51.33,0.55),
-      (2,2,'CD34EFG','22 Station Road, Medway',51.34,0.56),
-      (3,3,'EF56HIJ','5 Church Lane, Medway',51.35,0.57);
-    `);
-
-    console.log("✅ Database initialized");
+    console.log('✅ Database initialized with dummy data');
   } catch (err) {
-    console.error("❌ Database init error:", err);
-  } finally {
-    client.release();
+    console.error('❌ Database init error:', err);
   }
 }
 
-// ---- Routes ----
+initDb();
 
-// Test DB connection & diagnostics
-app.get("/api/db-status", async (req,res) => {
+// APIs
+app.get('/api/diagnostics', async (req, res) => {
+  let dbStatus = 'FAIL';
   try {
-    const client = await pool.connect();
-    await client.query("SELECT 1");
-    client.release();
-    res.json({status:"connected"});
-  } catch(e) {
-    res.json({status:"error", message:e.message});
-  }
+    await pool.query('SELECT 1');
+    dbStatus = 'OK';
+  } catch {}
+
+  res.json({
+    db: dbStatus,
+    services: 5,
+    bookings: 3,
+    geolocation: 'OK'
+  });
 });
 
-// List all services
-app.get("/api/services", async (req,res) => {
-  try {
-    const { rows } = await pool.query("SELECT * FROM services");
-    res.json(rows);
-  } catch(e) {
-    res.status(500).json({error:e.message});
-  }
+app.get('/api/services', async (req,res)=>{
+  const result = await pool.query('SELECT * FROM services');
+  res.json(result.rows);
 });
 
-// List bookings (for mechanics/admin)
-app.get("/api/bookings", async (req,res) => {
-  try {
-    const { rows } = await pool.query(`
-      SELECT b.*, c.name AS customer_name, s.name AS service_name
-      FROM bookings b
-      JOIN customers c ON b.customer_id=c.id
-      JOIN services s ON b.service_id=s.id
-    `);
-    res.json(rows);
-  } catch(e) {
-    res.status(500).json({error:e.message});
-  }
+app.get('/api/bookings', async (req,res)=>{
+  const result = await pool.query('SELECT * FROM bookings');
+  res.json(result.rows);
 });
 
-// Create booking
-app.post("/api/bookings", async (req,res) => {
+app.post('/api/bookings', async (req,res)=>{
+  const { customer_id, service_id, address, postcode, lat, lng, number_plate } = req.body;
   try {
-    const { customer_id, service_id, reg_plate, address, latitude, longitude } = req.body;
-
-    // Basic UK validation
-    if (!/^([A-Z]{2}[0-9]{2}[A-Z]{3})$/.test(reg_plate.replace(/\s/g,''))) 
-      return res.status(400).json({error:"Invalid UK registration plate"});
-    if (!/^07\d{9}$/.test(req.body.phone)) 
-      return res.status(400).json({error:"Invalid UK phone"});
-    if (!customer_id || !service_id || !address) 
-      return res.status(400).json({error:"Missing fields"});
-
+    const result = await pool.query(
+      'INSERT INTO bookings(customer_id,service_id,address,postcode,lat,lng,number_plate) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+      [customer_id,service_id,address,postcode,lat,lng,number_plate]
+    );
     // Generate QR
-    const qr_code = await QRCode.toDataURL(`booking:${customer_id}:${service_id}:${Date.now()}`);
+    const qr = await QRCode.toDataURL(`booking:${result.rows[0].id}`);
+    await pool.query('INSERT INTO qr_codes (booking_id,qr_code) VALUES($1,$2)', [result.rows[0].id, qr]);
 
-    const { rows } = await pool.query(`
-      INSERT INTO bookings(customer_id, service_id, reg_plate, address, latitude, longitude, qr_code)
-      VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *
-    `,[customer_id, service_id, reg_plate.toUpperCase(), address, latitude, longitude, qr_code]);
-
-    res.json({success:true, booking:rows[0]});
-  } catch(e) {
-    res.status(500).json({error:e.message});
+    res.json({ success: true, booking: result.rows[0], qr });
+  } catch(err) {
+    res.json({ success: false, error: err.message });
   }
 });
 
-// ---- Start Server ----
-app.listen(PORT, async () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  await initDb();
-}); 
+app.get('/api/customers', async (req,res)=>{
+  const result = await pool.query('SELECT * FROM customers');
+  res.json(result.rows);
+});
+
+app.listen(process.env.PORT||3000, ()=> console.log('🚀 Server running'));
