@@ -1,192 +1,194 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mechanic Booking</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<style>
-  body { font-family: Arial, sans-serif; background: #f9f9f9; }
-  header { background: #007bff; color: white; padding: 2rem 1rem; text-align: center; }
-  .container { max-width: 800px; margin: 2rem auto; background: white; padding: 2rem; border-radius: 10px; }
-  .form-label { font-weight: bold; }
-  footer { margin-top: 2rem; font-size: 0.9rem; text-align: center; }
-  .diag-popup { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 2px solid #007bff; max-height: 300px; overflow-y: auto; display: none; z-index: 9999; padding: 1rem; }
-  .faq-item { margin-bottom: 1rem; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile Mechanic Booking</title>
+  <style>
+    /* === CSS Inline === */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header, footer {
+      background: #0d6efd;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    main {
+      flex: 1;
+      padding: 2rem;
+    }
+    form {
+      max-width: 600px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    input, select, button {
+      padding: 0.8rem;
+      font-size: 1rem;
+      width: 100%;
+    }
+    button {
+      background: #0d6efd;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover { background: #0b5ed7; }
+
+    /* Popup */
+    .popup {
+      display: none;
+      position: fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+    }
+    .popup-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      text-align: center;
+      max-width: 400px;
+      position: relative;
+    }
+    .close {
+      position: absolute;
+      top:10px;
+      right:10px;
+      cursor: pointer;
+      font-size: 1.5rem;
+    }
+
+    /* Diagnostics */
+    .diagnostics {
+      display: none;
+      background: #f1f1f1;
+      color: black;
+      padding: 1rem;
+      margin-top: 1rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
+  <header>
+    <h1>Mobile Mechanic Booking</h1>
+  </header>
 
-<header>
-  <h1>Mechanic Service Booking</h1>
-  <p>Book your vehicle service in seconds</p>
-</header>
+  <main>
+    <form id="bookingForm">
+      <label for="name">Name</label>
+      <input type="text" id="name" required>
 
-<div class="container">
-  <form id="bookingForm">
-    <div class="mb-3">
-      <label class="form-label" for="name">Full Name</label>
-      <input type="text" class="form-control" id="name" required>
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="email">Email</label>
-      <input type="email" class="form-control" id="email" required>
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="phone">Phone</label>
-      <input type="tel" class="form-control" id="phone" required pattern="^07\d{9}$">
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="number_plate">Number Plate</label>
-      <input type="text" class="form-control" id="number_plate" required>
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="address">Address</label>
-      <input type="text" class="form-control" id="address" required>
-    </div>
-    <div class="mb-3">
-      <label class="form-label" for="service">Select Service</label>
-      <select class="form-select" id="service" required></select>
-    </div>
-    <button type="submit" class="btn btn-primary w-100">Book Service</button>
-  </form>
+      <label for="email">Email</label>
+      <input type="email" id="email" required>
 
-  <div id="ticketPopup" class="modal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content p-3 text-center">
-        <h5 class="mb-3">Booking Confirmed!</h5>
-        <canvas id="qrCanvas"></canvas>
-        <p class="mt-2">Take a screenshot or download your QR to start your job.</p>
-        <button type="button" class="btn btn-success" onclick="closeTicket()">Close</button>
+      <label for="phone">Phone (UK)</label>
+      <input type="tel" id="phone" pattern="^07[0-9]{9}$" required placeholder="07123456789">
+
+      <label for="reg_plate">Registration Plate</label>
+      <input type="text" id="reg_plate" maxlength="10" required placeholder="AB12 CDE">
+
+      <label for="location">Address</label>
+      <input type="text" id="location" required>
+
+      <label for="service">Service</label>
+      <select id="service" required>
+        <option value="">Select Service</option>
+        <option value="1">Oil Change</option>
+        <option value="2">Brake Service</option>
+        <option value="3">Battery Replacement</option>
+      </select>
+
+      <button type="submit">Book Service</button>
+    </form>
+
+    <div id="ticketPopup" class="popup">
+      <div class="popup-content">
+        <span id="closePopup" class="close">&times;</span>
+        <h2>Booking Confirmed</h2>
+        <img id="qrImage" src="" alt="QR Code">
+        <p id="ticketDetails"></p>
       </div>
     </div>
-  </div>
-</div>
+  </main>
 
-<footer>
-  <button class="btn btn-link" id="diagnoseBtn">Run Diagnostics</button>
-  <div id="dbStatus">Database: Unknown</div>
-</footer>
+  <footer>
+    <button id="diagnoseBtn">Check System Diagnostics</button>
+    <div id="diagnostics" class="diagnostics"></div>
+  </footer>
 
-<div class="diag-popup" id="diagPopup"></div>
+  <script>
+    /* === JS Inline === */
+    const bookingForm = document.getElementById('bookingForm');
+    const ticketPopup = document.getElementById('ticketPopup');
+    const closePopup = document.getElementById('closePopup');
+    const qrImage = document.getElementById('qrImage');
+    const ticketDetails = document.getElementById('ticketDetails');
+    const diagnosticsDiv = document.getElementById('diagnostics');
+    const diagnoseBtn = document.getElementById('diagnoseBtn');
 
-<h2 class="text-center mt-5">Our Services</h2>
-<div class="container mb-5" id="servicesList"></div>
+    // Convert reg plate to uppercase automatically
+    document.getElementById('reg_plate').addEventListener('input', e => {
+      e.target.value = e.target.value.toUpperCase();
+    });
 
-<h2 class="text-center mb-3">FAQ</h2>
-<div class="container" id="faqAccordion">
-  <div class="accordion" id="accordionFAQ">
-    <div class="accordion-item faq-item">
-      <h2 class="accordion-header" id="headingOne">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">How do I book?</button>
-      </h2>
-      <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
-        <div class="accordion-body">Fill in the form above with your details and select a service.</div>
-      </div>
-    </div>
-    <div class="accordion-item faq-item">
-      <h2 class="accordion-header" id="headingTwo">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">Is my location secure?</button>
-      </h2>
-      <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
-        <div class="accordion-body">Yes, we only use your location for service delivery confirmation.</div>
-      </div>
-    </div>
-    <div class="accordion-item faq-item">
-      <h2 class="accordion-header" id="headingThree">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">How do I start the job?</button>
-      </h2>
-      <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#accordionFAQ">
-        <div class="accordion-body">After booking, a QR code ticket will be provided to start the service with our mechanic.</div>
-      </div>
-    </div>
-  </div>
-</div>
+    bookingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        customer_id: 1, // For testing
+        service_id: document.getElementById('service').value,
+        reg_plate: document.getElementById('reg_plate').value.replace(/\s/g, ''),
+        location: document.getElementById('location').value
+      };
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-<script>
-  const bookingForm = document.getElementById('bookingForm');
-  const serviceSelect = document.getElementById('service');
-  const dbStatusEl = document.getElementById('dbStatus');
-  const diagPopup = document.getElementById('diagPopup');
-  const ticketPopup = new bootstrap.Modal(document.getElementById('ticketPopup'), { backdrop: 'static' });
-  const qrCanvas = document.getElementById('qrCanvas');
+      try {
+        const res = await fetch('/api/book', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if(result.booking) {
+          qrImage.src = result.booking.qr_code;
+          ticketDetails.innerHTML = `Reg Plate: ${result.booking.reg_plate}<br>Service ID: ${result.booking.service_id}`;
+          ticketPopup.style.display = 'flex';
+        } else {
+          alert(result.error);
+        }
+      } catch(err) {
+        alert('Booking failed: ' + err.message);
+      }
+    });
 
-  async function fetchServices() {
-    try {
-      const res = await fetch('/services');
-      const services = await res.json();
-      serviceSelect.innerHTML = services.map(s => `<option value="${s.id}">${s.name} - £${s.price}</option>`).join('');
-      document.getElementById('servicesList').innerHTML = services.map(s => `<div class="card mb-2 p-2"><strong>${s.name}</strong>: ${s.description} (£${s.price})</div>`).join('');
-    } catch (err) {
-      console.error(err);
-    }
-  }
+    closePopup.addEventListener('click', () => {
+      ticketPopup.style.display = 'none';
+    });
 
-  async function checkDbStatus() {
-    try {
-      const res = await fetch('/db-status');
-      const data = await res.json();
-      dbStatusEl.textContent = `Database: ${data.status === 'connected' ? '✅ Connected' : '❌ Not Connected'}`;
-    } catch (err) {
-      dbStatusEl.textContent = 'Database: ❌ Error';
-    }
-  }
-
-  async function bookService(data) {
-    try {
-      const res = await fetch('/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) throw new Error('Booking failed');
-      const booking = await res.json();
-      QRCode.toCanvas(qrCanvas, booking.qr_code, { width: 200 });
-      ticketPopup.show();
-    } catch (err) {
-      alert(err.message);
-    }
-  }
-
-  bookingForm.addEventListener('submit', async e => {
-    e.preventDefault();
-    const data = {
-      name: document.getElementById('name').value.toUpperCase(),
-      email: document.getElementById('email').value.toLowerCase(),
-      phone: document.getElementById('phone').value,
-      number_plate: document.getElementById('number_plate').value.toUpperCase().replace(/\s+/g, ''),
-      address: document.getElementById('address').value,
-      service_id: serviceSelect.value,
-      lat: window.lat || null,
-      lng: window.lng || null
-    };
-    await bookService(data);
-  });
-
-  document.getElementById('diagnoseBtn').addEventListener('click', async () => {
-    diagPopup.style.display = 'block';
-    diagPopup.innerHTML = '<p>Running diagnostics...</p>';
-    try {
-      const dbRes = await fetch('/db-status');
-      const dbData = await dbRes.json();
-      diagPopup.innerHTML += `<p>Database: ${dbData.status}</p>`;
-    } catch (err) {
-      diagPopup.innerHTML += `<p>Database: ❌ Error</p>`;
-    }
-  });
-
-  function closeTicket() { ticketPopup.hide(); }
-
-  // Get user location
-  navigator.geolocation.getCurrentPosition(pos => {
-    window.lat = pos.coords.latitude;
-    window.lng = pos.coords.longitude;
-  });
-
-  fetchServices();
-  checkDbStatus();
-</script>
+    // Diagnostics
+    diagnoseBtn.addEventListener('click', async () => {
+      diagnosticsDiv.style.display = 'block';
+      diagnosticsDiv.innerHTML = 'Loading diagnostics...';
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        diagnosticsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      } catch(err) {
+        diagnosticsDiv.innerHTML = 'Error fetching diagnostics: ' + err.message;
+      }
+    });
+  </script>
 </body>
 </html>
