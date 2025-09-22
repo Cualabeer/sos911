@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Mobile mechanic booking system with customer, mechanic, and admin panels. Industry-safe, production-ready, with QR job tickets.",
   "main": "backend/server.js",
-  "type": "module",
   "scripts": {
     "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js"
+    "dev": "nodemon backend/server.js",
+    "lint": "eslint ."
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
