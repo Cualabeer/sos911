@@ -1,4 +1,3 @@
-// backend/server.js
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -13,6 +12,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
@@ -25,12 +25,7 @@ app.use(helmet());
 app.use(xss());
 
 // Rate limiter
-const limiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 60,
-  message: "Too many requests, try again later",
-});
-app.use(limiter);
+app.use(rateLimit({ windowMs: 60 * 1000, max: 60 }));
 
 // Serve frontend
 app.use(express.static("../frontend"));
@@ -51,17 +46,15 @@ const bookingSchema = Joi.object({
   postcode: Joi.string().pattern(/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i).required(),
 });
 
-// Init DB
+// Initialize DB with tables and dummy data
 async function initDb() {
   const client = await pool.connect();
   try {
-    // Drop all tables first
     await client.query(`DROP TABLE IF EXISTS loyalty CASCADE`);
     await client.query(`DROP TABLE IF EXISTS bookings CASCADE`);
     await client.query(`DROP TABLE IF EXISTS services CASCADE`);
     await client.query(`DROP TABLE IF EXISTS customers CASCADE`);
 
-    // Create tables
     await client.query(`
       CREATE TABLE customers (
         id SERIAL PRIMARY KEY,
@@ -105,7 +98,6 @@ async function initDb() {
       );
     `);
 
-    // Dummy data
     await client.query(`INSERT INTO services (name, category, description) VALUES 
       ('Oil Change', 'Maintenance', 'Full synthetic oil change'),
       ('Brake Inspection', 'Maintenance', 'Check and adjust brakes'),
@@ -132,7 +124,7 @@ async function initDb() {
       (1,10),(2,5),(3,0)
     `);
 
-    console.log("✅ Database initialized with dummy data!");
+    console.log("✅ Database initialized!");
   } catch (err) {
     console.error("❌ Database init error:", err.message);
   } finally {
@@ -141,6 +133,8 @@ async function initDb() {
 }
 
 // Routes
+
+// Diagnostics
 app.get("/api/diagnostics", async (req,res)=>{
   try {
     const client = await pool.connect();
@@ -176,7 +170,7 @@ app.post("/api/customers", async (req,res)=>{
   }
 });
 
-// Booking service
+// Booking with QR
 app.post("/api/bookings", async (req,res)=>{
   const {error,value} = bookingSchema.validate(req.body);
   if(error) return res.status(400).json({error:error.details[0].message});
