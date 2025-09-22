@@ -1,198 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Book a Service</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f8f9fa;
-    }
-    h1 {
-      color: #0d6efd;
-    }
-    #bookingForm {
-      background-color: #fff;
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
-      max-width: 600px;
-      margin: auto;
-    }
-    footer {
-      padding: 1rem;
-      font-size: 0.9rem;
-      text-align: center;
-    }
-    .modal-body p {
-      margin-bottom: 0.5rem;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Booking</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  html, body { height: 100%; margin:0; font-family: Arial, sans-serif; }
+  .container { max-width: 900px; margin: auto; padding: 2rem; }
+  .footer { position: fixed; bottom: 0; width: 100%; background: #f8f9fa; padding: 0.5rem; text-align: center; z-index: 100; }
+  .form-control { margin-bottom: 1rem; }
+  #ticketModal .modal-content { text-align:center; }
+</style>
 </head>
 <body>
-  <!-- Diagnostics Preloader Modal -->
-  <div id="diagnosticsModal" class="modal fade show" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">System Diagnostics</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body" id="diagnosticsContent">
-          Loading diagnostics...
-        </div>
-      </div>
+
+<div class="container">
+  <h1 class="mb-4 text-center">Book a Service</h1>
+  <form id="bookingForm">
+    <input type="text" id="name" class="form-control" placeholder="Full Name" required>
+    <input type="email" id="email" class="form-control" placeholder="Email (UK format)" required>
+    <input type="text" id="phone" class="form-control" placeholder="Phone (UK)" required pattern="^(\+44\s?7\d{3}|\(?07\d{3}\)?)\s?\d{3}\s?\d{3}$">
+    <input type="text" id="numberPlate" class="form-control" placeholder="Number Plate (UK)" required pattern="^[A-Z]{2}\d{2}\s?[A-Z]{3}$">
+    <input type="text" id="address" class="form-control" placeholder="Address" required>
+    <input type="hidden" id="latitude">
+    <input type="hidden" id="longitude">
+
+    <select id="serviceSelect" class="form-control" required>
+      <option value="">Select Service</option>
+      <option value="1">Oil Change</option>
+      <option value="2">Brake Inspection</option>
+      <option value="3">Battery Replacement</option>
+    </select>
+    <button type="submit" class="btn btn-primary w-100">Book Service</button>
+  </form>
+</div>
+
+<div class="footer">
+  <span id="dbStatus">Database: Checking...</span>
+  <button id="diagnoseBtn" class="btn btn-sm btn-outline-secondary ms-2">Run Diagnostics</button>
+</div>
+
+<!-- Ticket Modal -->
+<div class="modal fade" id="ticketModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-3">
+      <h5>Your Booking Ticket</h5>
+      <p id="ticketInfo"></p>
+      <canvas id="qrCanvas"></canvas>
+      <button type="button" class="btn btn-success mt-2" data-bs-dismiss="modal">Close</button>
     </div>
   </div>
+</div>
 
-  <!-- Main Booking Form -->
-  <div class="container my-5">
-    <h1 class="text-center mb-4">Book a Service</h1>
-    <form id="bookingForm">
-      <div class="mb-3">
-        <label for="name" class="form-label">Full Name</label>
-        <input type="text" class="form-control" id="name" required>
-      </div>
-      <div class="mb-3">
-        <label for="phone" class="form-label">Phone (UK)</label>
-        <input type="tel" class="form-control" id="phone" placeholder="+44 7123 456789" required>
-      </div>
-      <div class="mb-3">
-        <label for="email" class="form-label">Email</label>
-        <input type="email" class="form-control" id="email" placeholder="example@email.com" required>
-      </div>
-      <div class="mb-3">
-        <label for="numberPlate" class="form-label">Vehicle Number Plate</label>
-        <input type="text" class="form-control" id="numberPlate" placeholder="AB12 CDE" required>
-      </div>
-      <div class="mb-3">
-        <label for="address" class="form-label">Address</label>
-        <input type="text" class="form-control" id="address" placeholder="Start typing address..." required>
-      </div>
-      <div class="mb-3">
-        <label for="service" class="form-label">Service</label>
-        <select class="form-select" id="service" required>
-          <option value="">Select service</option>
-          <option value="Oil Change">Oil Change</option>
-          <option value="Brake Check">Brake Check</option>
-          <option value="Battery Replacement">Battery Replacement</option>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-primary w-100">Book Service</button>
-    </form>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script>
+  const form = document.getElementById('bookingForm');
+  const numberPlate = document.getElementById('numberPlate');
+  const dbStatus = document.getElementById('dbStatus');
+  const diagnoseBtn = document.getElementById('diagnoseBtn');
+  const latitudeInput = document.getElementById('latitude');
+  const longitudeInput = document.getElementById('longitude');
+  const addressInput = document.getElementById('address');
+  const ticketModal = new bootstrap.Modal(document.getElementById('ticketModal'));
+  const ticketInfo = document.getElementById('ticketInfo');
+  const qrCanvas = document.getElementById('qrCanvas');
 
-    <!-- Booking Ticket Modal -->
-    <div class="modal fade" id="ticketModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Booking Ticket</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body text-center" id="ticketContent">
-            Generating ticket...
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  // Auto uppercase & format UK number plate
+  numberPlate.addEventListener('input', e => {
+    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(val.length >= 4) val = val.slice(0,4) + ' ' + val.slice(4);
+    e.target.value = val;
+  });
 
-  <!-- Footer -->
-  <footer>
-    <div id="dbStatus">Checking database connection...</div>
-    <button class="btn btn-link mt-2" data-bs-toggle="modal" data-bs-target="#diagnosticsModal">
-      Show Diagnostics
-    </button>
-  </footer>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // Show diagnostics modal
-      const diagnosticsModal = new bootstrap.Modal(document.getElementById('diagnosticsModal'));
-      diagnosticsModal.show();
-
-      async function runDiagnostics() {
-        const content = document.getElementById('diagnosticsContent');
-        let html = '';
-
-        // Database Status
-        try {
-          const res = await fetch('/api/db-status');
-          const data = await res.json();
-          html += '<p>Database Connection: ' + (data.connected ? '✅ Connected' : '❌ Not Connected') + '</p>';
-          document.getElementById('dbStatus').innerText = data.connected ? '✅ Database connected' : '❌ Database not connected';
-        } catch(e) {
-          html += '<p>Database Connection: ❌ Error</p>';
-          document.getElementById('dbStatus').innerText = '❌ Database not connected';
-        }
-
-        // Services API
-        try {
-          const res = await fetch('/api/services');
-          const services = await res.json();
-          html += '<p>Services API: ✅ ' + services.length + ' services loaded</p>';
-        } catch(e) {
-          html += '<p>Services API: ❌ Error</p>';
-        }
-
-        // Bookings API
-        try {
-          const res = await fetch('/api/bookings');
-          const bookings = await res.json();
-          html += '<p>Bookings API: ✅ ' + bookings.length + ' bookings loaded</p>';
-        } catch(e) {
-          html += '<p>Bookings API: ❌ Error</p>';
-        }
-
-        content.innerHTML = html;
-      }
-
-      runDiagnostics().then(() => {
-        setTimeout(() => diagnosticsModal.hide(), 1500);
+  // Auto-detect location
+  window.onload = () => {
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos => {
+        latitudeInput.value = pos.coords.latitude;
+        longitudeInput.value = pos.coords.longitude;
+        reverseGeocode(pos.coords.latitude, pos.coords.longitude);
       });
+    }
+    checkDbStatus();
+  };
 
-      // Booking Form Submit
-      const bookingForm = document.getElementById('bookingForm');
-      bookingForm.addEventListener('submit', async e => {
-        e.preventDefault();
+  // Reverse geocode using Nominatim
+  async function reverseGeocode(lat, lng){
+    try{
+      const res = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      if(res.data && res.data.display_name) addressInput.value = res.data.display_name;
+    }catch(e){
+      console.error('Reverse geocode failed', e);
+    }
+  }
 
-        const name = document.getElementById('name').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const numberPlate = document.getElementById('numberPlate').value.toUpperCase().replace(/\s+/g,'');
-        const address = document.getElementById('address').value.trim();
-        const service = document.getElementById('service').value;
+  // Submit booking
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const data = {
+      name: document.getElementById('name').value,
+      email: document.getElementById('email').value,
+      phone: document.getElementById('phone').value,
+      number_plate: numberPlate.value,
+      address: addressInput.value,
+      latitude: latitudeInput.value,
+      longitude: longitudeInput.value,
+      service_id: document.getElementById('serviceSelect').value
+    };
+    try{
+      const res = await axios.post('/api/bookings', data);
+      ticketInfo.textContent = `Booking ID: ${res.data.id}\nService: ${document.getElementById('serviceSelect').selectedOptions[0].text}`;
+      QRCode.toCanvas(qrCanvas, `Booking:${res.data.id}`, { width:150 });
+      ticketModal.show();
+    }catch(err){
+      alert('Booking failed: '+(err.response?.data?.error||err.message));
+    }
+  });
 
-        const payload = { name, phone, email, numberPlate, address, service };
+  // Diagnostics
+  diagnoseBtn.addEventListener('click', async () => {
+    try{
+      const res = await axios.get('/api/diagnostics');
+      alert(`Diagnostics:
+DB: ${res.data.db}
+Services loaded: ${res.data.servicesCount}
+Bookings loaded: ${res.data.bookingsCount}
+QR: ${res.data.qr}`);
+    }catch(err){
+      alert('Diagnostics failed: '+err.message);
+    }
+  });
 
-        try {
-          const res = await fetch('/api/bookings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-
-          if (data.success) {
-            const ticketModal = new bootstrap.Modal(document.getElementById('ticketModal'));
-            document.getElementById('ticketContent').innerHTML = `
-              <p><strong>Booking Confirmed!</strong></p>
-              <p>Name: ${name}</p>
-              <p>Service: ${service}</p>
-              <p>Number Plate: ${numberPlate}</p>
-            `;
-            ticketModal.show();
-          } else {
-            alert('Booking failed: ' + (data.message || 'Unknown error'));
-          }
-        } catch(err) {
-          alert('Booking failed: ' + err.message);
-        }
-      });
-    });
-  </script>
+  // Check DB status for footer
+  async function checkDbStatus(){
+    try{
+      const res = await axios.get('/api/diagnostics');
+      dbStatus.textContent = `Database: ${res.data.db} | Services: ${res.data.servicesCount} | Bookings: ${res.data.bookingsCount}`;
+    }catch{
+      dbStatus.textContent = 'Database: ❌ Not Connected';
+    }
+  }
+</script>
 </body>
 </html>
