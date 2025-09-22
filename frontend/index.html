@@ -4,144 +4,147 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mobile Mechanic Booking</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"/>
 <style>
-  body { margin:0; font-family:sans-serif; background:#f4f4f4; }
-  header { background:#222; color:white; padding:1rem; text-align:center; }
-  .hero { background:#007BFF; color:white; padding:2rem; text-align:center; }
-  .hero button { padding:.7rem 1.2rem; margin-top:1rem; font-size:1rem; cursor:pointer; border:none; border-radius:4px; background:#ffc107; color:#222; }
-  .services { display:flex; overflow-x:auto; padding:1rem; gap:1rem; }
-  .service-card { min-width:250px; background:white; border-radius:8px; padding:1rem; box-shadow:0 2px 5px rgba(0,0,0,0.2); flex-shrink:0; }
-  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000; }
-  .modal-content { background:white; padding:2rem; border-radius:8px; width:90%; max-width:400px; position:relative; }
-  .modal-content h2 { margin-top:0; }
-  .close { position:absolute; top:10px; right:10px; cursor:pointer; font-weight:bold; }
-  .footer { position:fixed; bottom:0; width:100%; background:#222; color:white; text-align:center; padding:.5rem; cursor:pointer; }
-  .diag-panel { position:fixed; bottom:0; left:0; width:100%; height:0; background:white; overflow:auto; transition:height 0.3s ease; border-top-left-radius:12px; border-top-right-radius:12px; box-shadow:0 -2px 8px rgba(0,0,0,0.3); z-index:999; }
-  .diag-panel h3 { margin:1rem; }
-  .form-group { margin-bottom:1rem; }
-  .form-group input { width:100%; padding:.5rem; font-size:1rem; }
-  .btn { padding:.5rem 1rem; background:#007BFF; color:white; border:none; cursor:pointer; border-radius:4px; }
-  .booking-form { margin-top:1rem; }
+  body { margin:0; font-family:sans-serif; background:#f5f5f5; }
+  header { background:#222; color:#fff; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { margin:0; font-size:1.5rem; }
+  header button { background:#f90; border:none; padding:.5rem 1rem; cursor:pointer; border-radius:4px; }
+  .hero { padding:2rem; text-align:center; background:#eaeaea; }
+  .hero h2 { margin-bottom:1rem; }
+  .swiper { padding:2rem 0; }
+  .swiper-slide { background:#fff; border-radius:8px; padding:1rem; box-shadow:0 2px 8px rgba(0,0,0,.1); display:flex; flex-direction:column; justify-content:space-between; }
+  .swiper-slide h3 { margin:0 0 .5rem 0; font-size:1.2rem; }
+  .swiper-slide p { flex:1; font-size:.9rem; color:#555; }
+  .swiper-slide button { margin-top:1rem; background:#28a745; color:#fff; border:none; padding:.5rem; border-radius:4px; cursor:pointer; }
+  footer { background:#222; color:#fff; padding:1rem; text-align:center; position:fixed; bottom:0; width:100%; cursor:pointer; }
+  /* Modal */
+  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.5); justify-content:center; align-items:center; }
+  .modal-content { background:#fff; padding:2rem; border-radius:8px; max-width:400px; width:90%; }
+  .modal-content h3 { margin-top:0; }
+  .modal-content input { width:100%; padding:.5rem; margin:.5rem 0; border:1px solid #ccc; border-radius:4px; }
+  .modal-content button { background:#007bff; color:#fff; border:none; padding:.5rem 1rem; border-radius:4px; cursor:pointer; margin-top:1rem; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Mobile Mechanic Booking</h1>
+  <h1>Mobile Mechanic</h1>
+  <button id="loginBtn">Login / Register</button>
 </header>
 
 <section class="hero">
-  <h2>Quick & Easy Booking</h2>
-  <p>Book your car service in seconds</p>
-  <button id="guestBookBtn">Book Now</button>
+  <h2>Get your car serviced quickly!</h2>
+  <p>Book online and let our mobile mechanics come to you. View all services below.</p>
 </section>
 
-<section class="services" id="servicesContainer">
-  <!-- Service cards will populate here -->
-</section>
+<!-- Services Carousel -->
+<div class="swiper" id="services-carousel">
+  <div class="swiper-wrapper"></div>
+  <div class="swiper-pagination"></div>
+</div>
 
-<!-- Register Modal -->
-<div class="modal" id="registerModal">
+<!-- Footer Diagnostics -->
+<footer id="diagFooter">Diagnostics</footer>
+
+<!-- Login/Register Modal -->
+<div class="modal" id="authModal">
   <div class="modal-content">
-    <span class="close" id="registerClose">&times;</span>
-    <h2>Register</h2>
-    <div class="form-group"><input type="text" id="regName" placeholder="Name"></div>
-    <div class="form-group"><input type="email" id="regEmail" placeholder="Email"></div>
-    <div class="form-group"><input type="text" id="regPhone" placeholder="UK Phone (07XXXXXXXXX)"></div>
-    <div class="form-group"><input type="text" id="regRegPlate" placeholder="Car Reg Plate (AB12 CDE)"></div>
-    <div class="form-group"><input type="text" id="regAddress" placeholder="Address"></div>
-    <button class="btn" id="registerSubmit">Register</button>
-    <div id="regMsg"></div>
+    <h3>Login / Register</h3>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button id="loginSubmit">Submit</button>
+    <button id="closeAuth">Close</button>
   </div>
 </div>
 
-<!-- Login Modal -->
-<div class="modal" id="loginModal">
+<!-- Booking Modal -->
+<div class="modal" id="bookingModal">
   <div class="modal-content">
-    <span class="close" id="loginClose">&times;</span>
-    <h2>Login</h2>
-    <div class="form-group"><input type="email" id="loginEmail" placeholder="Email"></div>
-    <div class="form-group"><input type="password" id="loginPassword" placeholder="Password"></div>
-    <button class="btn" id="loginSubmit">Login</button>
-    <div id="loginMsg"></div>
+    <h3>Book Service</h3>
+    <p id="serviceName"></p>
+    <input type="text" id="customerName" placeholder="Your Name">
+    <input type="text" id="customerPhone" placeholder="Phone">
+    <input type="text" id="customerReg" placeholder="Car Reg">
+    <input type="text" id="customerAddress" placeholder="Address">
+    <button id="bookSubmit">Book Now</button>
+    <button id="closeBooking">Close</button>
   </div>
 </div>
 
-<!-- Diagnostics Footer -->
-<div class="footer" id="diagBtn">Check Diagnostics</div>
-<div class="diag-panel" id="diagPanel">
-  <h3>System Diagnostics</h3>
-  <div id="diagContent"></div>
-</div>
-
+<script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
 <script>
-// Utility
-function showModal(modal){ modal.style.display='flex'; }
-function closeModal(modal){ modal.style.display='none'; }
+const loginBtn = document.getElementById('loginBtn');
+const authModal = document.getElementById('authModal');
+const closeAuth = document.getElementById('closeAuth');
 
-// Modals
-const registerModal = document.getElementById('registerModal');
-const loginModal = document.getElementById('loginModal');
+loginBtn.addEventListener('click',()=>authModal.style.display='flex');
+closeAuth.addEventListener('click',()=>authModal.style.display='none');
 
-document.getElementById('registerClose').onclick = ()=>closeModal(registerModal);
-document.getElementById('loginClose').onclick = ()=>closeModal(loginModal);
-
-// Services fetch & populate
+// Fetch services and populate carousel
 async function loadServices(){
-  try{
+  try {
     const res = await fetch('/api/services');
-    const data = await res.json();
-    const container = document.getElementById('servicesContainer');
-    container.innerHTML = '';
-    data.forEach(s=>{
-      const card = document.createElement('div');
-      card.className='service-card';
-      card.innerHTML=`<h3>${s.name}</h3><p>${s.description}</p>`;
-      container.appendChild(card);
+    const services = await res.json();
+    const wrapper = document.querySelector('.swiper-wrapper');
+    services.forEach(svc=>{
+      const slide = document.createElement('div');
+      slide.className = 'swiper-slide';
+      slide.innerHTML = `<h3>${svc.name}</h3><p>${svc.description}</p><button data-id="${svc.id}" data-name="${svc.name}">Book Now</button>`;
+      wrapper.appendChild(slide);
     });
-  }catch(err){ console.error(err); }
+    new Swiper('.swiper', { slidesPerView:1.2, spaceBetween:20, pagination:{el:'.swiper-pagination'} });
+  } catch(err){
+    console.error(err);
+  }
 }
 loadServices();
 
-// Diagnostics
-const diagBtn = document.getElementById('diagBtn');
-const diagPanel = document.getElementById('diagPanel');
-diagBtn.onclick = async ()=>{
-  diagPanel.style.height='75%';
-  try{
-    const res = await fetch('/api/diagnostics');
-    const data = await res.json();
-    document.getElementById('diagContent').innerHTML=
-      `<pre>${JSON.stringify(data,null,2)}</pre>`;
-  }catch(err){ document.getElementById('diagContent').innerText=err.message; }
-};
+// Booking modal logic
+const bookingModal = document.getElementById('bookingModal');
+const closeBooking = document.getElementById('closeBooking');
+let currentServiceId = null;
 
-// Close panel on click outside
-diagPanel.addEventListener('click', e=>{ if(e.target===diagPanel) diagPanel.style.height='0'; });
+document.addEventListener('click',e=>{
+  if(e.target.dataset.id){
+    currentServiceId = e.target.dataset.id;
+    document.getElementById('serviceName').innerText = e.target.dataset.name;
+    bookingModal.style.display='flex';
+  }
+});
 
-// Guest Book button opens register modal
-document.getElementById('guestBookBtn').onclick=()=>showModal(registerModal);
+closeBooking.addEventListener('click',()=>bookingModal.style.display='none');
 
-// Register submission
-document.getElementById('registerSubmit').onclick=async ()=>{
-  const payload = {
-    name: document.getElementById('regName').value,
-    email: document.getElementById('regEmail').value,
-    phone: document.getElementById('regPhone').value,
-    reg_plate: document.getElementById('regRegPlate').value,
-    address: document.getElementById('regAddress').value
-  };
-  try{
-    const res = await fetch('/api/customers',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if(res.ok){ document.getElementById('regMsg').innerText='Registered!'; closeModal(registerModal); }
-    else{ document.getElementById('regMsg').innerText=data.error; }
-  }catch(err){ document.getElementById('regMsg').innerText=err.message; }
-};
+document.getElementById('bookSubmit').addEventListener('click', async ()=>{
+  const name = document.getElementById('customerName').value;
+  const phone = document.getElementById('customerPhone').value;
+  const reg = document.getElementById('customerReg').value;
+  const address = document.getElementById('customerAddress').value;
+
+  const res = await fetch('/api/customers', { 
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name, email:document.getElementById('email').value || 'guest@example.com', phone, reg_plate:reg, address })
+  });
+  const customer = await res.json();
+
+  const bookingRes = await fetch('/api/bookings',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ customer_id:customer.id, service_id:currentServiceId, location:address, postcode:address.split(' ').pop() })
+  });
+  const booking = await bookingRes.json();
+  alert('Booked! QR generated.');
+  bookingModal.style.display='none';
+});
+
+// Footer diagnostics
+const diagFooter = document.getElementById('diagFooter');
+diagFooter.addEventListener('click', async ()=>{
+  const res = await fetch('/api/diagnostics');
+  const diag = await res.json();
+  alert(`DB Status: ${diag.db_status}\nServices: ${diag.services}\nBookings: ${diag.bookings}\nCustomers: ${diag.customers}`);
+});
 </script>
 </body>
 </html>
