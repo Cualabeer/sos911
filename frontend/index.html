@@ -1,161 +1,175 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SOS Mobile Mechanic</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { font-family: Arial, sans-serif; }
-    header { background: #111; color: #fff; padding: 1rem; }
-    header .btn { margin-left: .5rem; }
-    .hero { background: #f8f9fa; text-align: center; padding: 3rem 1rem; }
-    .carousel-item img { max-height: 320px; object-fit: cover; width: 100%; }
-    footer { background: #111; color: #fff; padding: 1rem; text-align: center; }
-    .modal-content { border-radius: 8px; }
-    .form-control { margin-bottom: 1rem; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOS Mobile Mechanic - Booking</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
+<style>
+body { font-family: Arial, sans-serif; margin:0; padding:0; }
+header { background:#111; color:#fff; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
+header .btn { margin-left:.5rem; }
+.hero { background:#f8f9fa; text-align:center; padding:3rem 1rem; }
+.carousel-item img { max-height:320px; object-fit:cover; width:100%; }
+footer { background:#111; color:#fff; padding:1rem; text-align:center; }
+.swiper { padding:2rem 0; }
+.swiper-slide { background:#fff; border-radius:10px; padding:1rem; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.step { display:none; }
+.step.active { display:block; }
+button { cursor:pointer; }
+input, select { margin-bottom:1rem; }
+#qrCodeContainer img { width:100%; max-width:300px; display:block; margin:1rem auto; }
+</style>
 </head>
 <body>
 
-  <!-- Header -->
-  <header class="d-flex justify-content-between align-items-center">
-    <h3>SOS Mobile Mechanic</h3>
-    <div>
-      <button class="btn btn-outline-light" id="openLogin">Login</button>
-      <button class="btn btn-warning" id="openRegister">Register</button>
-      <button class="btn btn-success" id="openBooking">Book Now</button>
-    </div>
-  </header>
+<!-- Header -->
+<header>
+  <h3>SOS Mobile Mechanic</h3>
+  <div>
+    <button class="btn btn-warning" id="showBooking">Book Now</button>
+  </div>
+</header>
 
-  <!-- Hero Section -->
-  <section class="hero">
-    <h1>Fast, Reliable Mobile Car Repairs</h1>
-    <p>We come to you – at home, work, or roadside.</p>
-    <button class="btn btn-primary btn-lg" id="openBooking">Book a Service</button>
-  </section>
+<!-- Hero -->
+<section class="hero">
+  <h1>Fast, Reliable Mobile Car Repairs</h1>
+  <p>We come to you – home, work, or roadside</p>
+  <button class="btn btn-primary btn-lg" id="showBooking2">Book a Service</button>
+</section>
 
-  <!-- Services Carousel -->
-  <div id="servicesCarousel" class="carousel slide container my-5" data-bs-ride="carousel">
-    <div class="carousel-inner">
-      <div class="carousel-item active">
-        <div class="card text-center p-3">
-          <h5>Oil & Filter Change</h5>
-          <p>Keep your engine healthy with regular servicing.</p>
-        </div>
+<!-- Services Carousel -->
+<div class="container my-4">
+  <h4 class="mb-3">Our Services</h4>
+  <div class="swiper mySwiper">
+    <div class="swiper-wrapper">
+      <div class="swiper-slide" data-service="Oil & Filter Change">
+        <h5>Oil & Filter Change</h5>
+        <p>Keep your engine healthy with regular servicing.</p>
       </div>
-      <div class="carousel-item">
-        <div class="card text-center p-3">
-          <h5>Brake Repairs</h5>
-          <p>On-site brake pad and disc replacement.</p>
-        </div>
+      <div class="swiper-slide" data-service="Brake Repairs">
+        <h5>Brake Repairs</h5>
+        <p>On-site brake pad and disc replacement.</p>
       </div>
-      <div class="carousel-item">
-        <div class="card text-center p-3">
-          <h5>Battery Replacement</h5>
-          <p>Flat battery? We’ll replace it at your location.</p>
-        </div>
+      <div class="swiper-slide" data-service="Battery Replacement">
+        <h5>Battery Replacement</h5>
+        <p>Flat battery? We’ll replace it at your location.</p>
       </div>
     </div>
-    <button class="carousel-control-prev" type="button" data-bs-target="#servicesCarousel" data-bs-slide="prev">
-      <span class="carousel-control-prev-icon"></span>
-    </button>
-    <button class="carousel-control-next" type="button" data-bs-target="#servicesCarousel" data-bs-slide="next">
-      <span class="carousel-control-next-icon"></span>
-    </button>
+    <div class="swiper-button-next"></div>
+    <div class="swiper-button-prev"></div>
+  </div>
+</div>
+
+<!-- Booking Funnel -->
+<div class="container my-5" id="bookingFunnel">
+  <div class="step active" id="step1">
+    <h5>Select Service</h5>
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-outline-primary serviceBtn" data-service="Oil & Filter Change">Oil & Filter Change</button>
+      <button class="btn btn-outline-primary serviceBtn" data-service="Brake Repairs">Brake Repairs</button>
+      <button class="btn btn-outline-primary serviceBtn" data-service="Battery Replacement">Battery Replacement</button>
+    </div>
+    <button class="btn btn-primary mt-3" id="toStep2">Next</button>
   </div>
 
-  <!-- Footer -->
-  <footer>
-    <p>&copy; 2025 SOS Mobile Mechanic – Fast roadside repairs</p>
-  </footer>
-
-  <!-- Booking Modal -->
-  <div class="modal fade" id="bookingModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content p-3">
-        <div class="modal-header">
-          <h5 class="modal-title">Book a Service</h5>
-          <button type="button" class="btn-close" id="bookingClose"></button>
-        </div>
-        <div class="modal-body">
-          <form>
-            <input type="text" class="form-control" placeholder="Full Name" required>
-            <input type="email" class="form-control" placeholder="Email" required>
-            <input type="text" class="form-control" placeholder="Car Registration" required>
-            <select class="form-control" required>
-              <option>Oil & Filter Change</option>
-              <option>Brake Repairs</option>
-              <option>Battery Replacement</option>
-            </select>
-            <button type="submit" class="btn btn-success w-100 mt-2">Confirm Booking</button>
-          </form>
-        </div>
-      </div>
-    </div>
+  <div class="step" id="step2">
+    <h5>Vehicle & Location</h5>
+    <input type="text" id="fullName" class="form-control" placeholder="Full Name" required>
+    <input type="email" id="email" class="form-control" placeholder="Email" required>
+    <input type="text" id="carReg" class="form-control" placeholder="Car Registration" required>
+    <input type="text" id="postcode" class="form-control" placeholder="Postcode" required>
+    <button class="btn btn-secondary mt-2" id="backToStep1">Back</button>
+    <button class="btn btn-primary mt-2" id="toStep3">Next</button>
   </div>
 
-  <!-- Register Modal -->
-  <div class="modal fade" id="registerModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content p-3">
-        <div class="modal-header">
-          <h5 class="modal-title">Register</h5>
-          <button type="button" class="btn-close" id="registerClose"></button>
-        </div>
-        <div class="modal-body">
-          <form>
-            <input type="text" class="form-control" placeholder="Full Name" required>
-            <input type="email" class="form-control" placeholder="Email" required>
-            <input type="password" class="form-control" placeholder="Password" required>
-            <button type="submit" class="btn btn-warning w-100 mt-2">Create Account</button>
-          </form>
-        </div>
-      </div>
-    </div>
+  <div class="step" id="step3">
+    <h5>Membership (Optional)</h5>
+    <p>Sign up for faster bookings, loyalty points & rewards.</p>
+    <button class="btn btn-warning" id="signUpBtn">Sign Up</button>
+    <button class="btn btn-secondary" id="guestBtn">Continue as Guest</button>
   </div>
 
-  <!-- Login Modal -->
-  <div class="modal fade" id="loginModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content p-3">
-        <div class="modal-header">
-          <h5 class="modal-title">Login</h5>
-          <button type="button" class="btn-close" id="loginClose"></button>
-        </div>
-        <div class="modal-body">
-          <form>
-            <input type="email" class="form-control" placeholder="Email" required>
-            <input type="password" class="form-control" placeholder="Password" required>
-            <button type="submit" class="btn btn-primary w-100 mt-2">Login</button>
-          </form>
-        </div>
-      </div>
-    </div>
+  <div class="step" id="step4">
+    <h5>Review & Confirm</h5>
+    <div id="reviewSummary"></div>
+    <button class="btn btn-secondary mt-2" id="backToStep2">Back</button>
+    <button class="btn btn-success mt-2" id="confirmBooking">Confirm Booking</button>
   </div>
 
-  <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      function setupModal(openBtnId, modalId, closeBtnId) {
-        const openBtns = document.querySelectorAll(`#${openBtnId}`);
-        const modal = new bootstrap.Modal(document.getElementById(modalId));
-        const closeBtn = document.getElementById(closeBtnId);
+  <div class="step" id="step5">
+    <h5>Booking Confirmed!</h5>
+    <div id="qrCodeContainer"></div>
+    <p>Show this QR code to your mechanic when they arrive.</p>
+  </div>
+</div>
 
-        openBtns.forEach(btn => {
-          btn.addEventListener("click", () => modal.show());
-        });
+<footer>
+  <p>&copy; 2025 SOS Mobile Mechanic</p>
+</footer>
 
-        if (closeBtn) {
-          closeBtn.addEventListener("click", () => modal.hide());
-        }
-      }
+<script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+  const steps = document.querySelectorAll(".step");
+  let bookingData = {};
 
-      setupModal("openBooking", "bookingModal", "bookingClose");
-      setupModal("openRegister", "registerModal", "registerClose");
-      setupModal("openLogin", "loginModal", "loginClose");
+  // Swiper
+  const swiper = new Swiper(".mySwiper", {
+    slidesPerView: 1,
+    spaceBetween: 20,
+    navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" },
+  });
+
+  // Show booking
+  const showBtns = [document.getElementById("showBooking"), document.getElementById("showBooking2")];
+  showBtns.forEach(btn=>btn.addEventListener("click",()=>{ steps.forEach(s=>s.classList.remove("active")); steps[0].classList.add("active"); window.scrollTo({top:0,behavior:"smooth"}); }));
+
+  // Step 1
+  document.querySelectorAll(".serviceBtn").forEach(btn=>{
+    btn.addEventListener("click",()=>{ bookingData.service = btn.dataset.service; document.querySelectorAll(".serviceBtn").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); });
+  });
+  document.getElementById("toStep2").addEventListener("click",()=>{ if(!bookingData.service){ alert("Select a service"); return;} steps.forEach(s=>s.classList.remove("active")); document.getElementById("step2").classList.add("active"); });
+
+  // Step 2
+  document.getElementById("backToStep1").addEventListener("click",()=>{ steps.forEach(s=>s.classList.remove("active")); document.getElementById("step1").classList.add("active"); });
+  document.getElementById("toStep3").addEventListener("click",()=>{
+    bookingData.name=document.getElementById("fullName").value.trim();
+    bookingData.email=document.getElementById("email").value.trim();
+    bookingData.carReg=document.getElementById("carReg").value.trim().toUpperCase();
+    bookingData.postcode=document.getElementById("postcode").value.trim().toUpperCase();
+    if(!bookingData.name || !bookingData.email || !bookingData.carReg || !bookingData.postcode){ alert("Fill all fields"); return;}
+    steps.forEach(s=>s.classList.remove("active")); document.getElementById("step3").classList.add("active");
+  });
+
+  // Step 3
+  document.getElementById("signUpBtn").addEventListener("click",()=>{ bookingData.member=true; steps.forEach(s=>s.classList.remove("active")); document.getElementById("step4").classList.add("active"); showReview(); });
+  document.getElementById("guestBtn").addEventListener("click",()=>{ bookingData.member=false; steps.forEach(s=>s.classList.remove("active")); document.getElementById("step4").classList.add("active"); showReview(); });
+
+  // Step 4
+  function showReview(){
+    document.getElementById("reviewSummary").innerHTML = `
+      <p><strong>Service:</strong> ${bookingData.service}</p>
+      <p><strong>Name:</strong> ${bookingData.name}</p>
+      <p><strong>Email:</strong> ${bookingData.email}</p>
+      <p><strong>Car:</strong> ${bookingData.carReg}</p>
+      <p><strong>Postcode:</strong> ${bookingData.postcode}</p>
+      <p><strong>Member:</strong> ${bookingData.member?"Yes":"Guest"}</p>
+    `;
+  }
+  document.getElementById("backToStep2").addEventListener("click",()=>{ steps.forEach(s=>s.classList.remove("active")); document.getElementById("step2").classList.add("active"); });
+
+  document.getElementById("confirmBooking").addEventListener("click",()=>{
+    steps.forEach(s=>s.classList.remove("active")); document.getElementById("step5").classList.add("active");
+    // Generate QR code
+    QRCode.toDataURL(JSON.stringify(bookingData),{width:300}).then(url=>{
+      document.getElementById("qrCodeContainer").innerHTML=`<img src="${url}" alt="QR Code"/>`;
     });
-  </script>
+  });
+});
+</script>
+
 </body>
 </html>
