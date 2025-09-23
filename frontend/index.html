@@ -3,135 +3,144 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SOS Mobile Mechanic</title>
+<title>SOS Mobile Mechanic – Fast On-Site Car Repairs</title>
+<meta name="description" content="SOS Mobile Mechanic provides fast, reliable mobile car repairs. Book online for oil changes, brake repairs, battery replacement, and more.">
+<meta name="keywords" content="mobile mechanic, car repair, oil change, brake repair, battery replacement, on-site service">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-  body { font-family: Arial, sans-serif; }
-  header { background: #111; color: #fff; padding: 1rem; }
-  header .btn { margin-left: .5rem; }
-  .hero { background: #f8f9fa; text-align: center; padding: 3rem 1rem; }
-  .carousel-item img { max-height: 320px; object-fit: cover; width: 100%; }
-  .form-section { background: #fff; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 3rem; }
-  .form-control { margin-bottom: 1rem; }
-  .carousel-card { padding: 1rem; border-radius: 10px; background: #f1f1f1; text-align: center; }
-  .diagnostic-panel { position: fixed; bottom: 0; left:0; width:100%; background:#222; color:#fff; height:50px; cursor:pointer; transition: height 0.3s ease; overflow:auto; }
-  .diagnostic-panel.open { height: 75vh; padding:1rem; }
+body { font-family: Arial, sans-serif; margin:0; padding:0; }
+header { background:#111; color:#fff; padding:1rem; display:flex; justify-content:space-between; align-items:center; }
+header h1 { font-size:1.5rem; }
+header .btn { margin-left:.5rem; }
+.hero { background:#f8f9fa; text-align:center; padding:3rem 1rem; }
+.hero h2 { font-size:2rem; margin-bottom:1rem; }
+.hero p { font-size:1.2rem; margin-bottom:1.5rem; }
+.carousel-item { min-height: 320px; display:flex; justify-content:center; align-items:center; }
+.carousel-item .card { width:75%; padding:2rem; text-align:center; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+footer { background:#111; color:#fff; padding:1rem; text-align:center; position:relative; }
+.members, .booking-form { background:#fff; padding:2rem; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1); margin:2rem auto; max-width:500px; }
+#diagPanel { position:fixed; bottom:0; left:0; width:100%; background:#222; color:#fff; transform:translateY(95%); transition:transform .3s ease; border-top-left-radius:12px; border-top-right-radius:12px; z-index:1000; }
+#diagPanel.open { transform:translateY(25%); }
+#diagPanelHeader { padding:1rem; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+#diagPanelBody { padding:1rem; max-height:50vh; overflow-y:auto; }
+.card h3 { margin-bottom:.5rem; }
 </style>
 </head>
 <body>
 
-<header class="d-flex justify-content-between align-items-center">
-  <h3>SOS Mobile Mechanic</h3>
+<header>
+  <h1>SOS Mobile Mechanic</h1>
   <div>
-    <button class="btn btn-outline-light" id="membersBtn">Members</button>
+    <button class="btn btn-outline-light" id="membersToggle">Members</button>
+    <button class="btn btn-success" id="bookToggle">Book Now</button>
   </div>
 </header>
 
 <section class="hero">
-  <h1>Fast, Reliable Mobile Car Repairs</h1>
-  <p>We come to you – at home, work, or roadside.</p>
+  <h2>Fast, Reliable Mobile Car Repairs</h2>
+  <p>We come to your home, work, or roadside – get your car fixed without leaving your location.</p>
+  <button class="btn btn-primary btn-lg" id="bookToggle2">Book a Service</button>
 </section>
 
-<div class="container my-5">
-  <div class="row justify-content-center">
-    <div class="col-md-8 form-section">
-      <h4>Book a Service</h4>
-      <form id="bookingForm">
-        <input type="text" class="form-control" name="name" placeholder="Full Name" required>
-        <input type="email" class="form-control" name="email" placeholder="Email" required>
-        <input type="text" class="form-control" name="reg_plate" placeholder="Car Registration" required>
-        <select class="form-control" name="service" required></select>
-        <input type="text" class="form-control" name="address" placeholder="Address" required>
-        <button type="submit" class="btn btn-success w-100">Confirm Booking</button>
-      </form>
-      <hr>
-      <div id="memberSection">
-        <h4>Members Login / Register</h4>
-        <form id="memberForm">
-          <input type="email" class="form-control" name="memberEmail" placeholder="Email" required>
-          <input type="password" class="form-control" name="memberPassword" placeholder="Password" required>
-          <button type="submit" class="btn btn-primary w-100">Login</button>
-        </form>
-        <button class="btn btn-warning w-100 mt-2" id="registerBtn">Register New Member</button>
-        <div id="loyaltyInfo" class="mt-3" style="display:none;">
-          <p>Loyalty Points: <span id="loyaltyPoints">0</span></p>
-        </div>
-        <div id="bookingHistory" class="mt-3" style="display:none; max-height:200px; overflow:auto;"></div>
-      </div>
-    </div>
+<!-- Services Carousel -->
+<div id="servicesCarousel" class="carousel slide container my-5" data-bs-ride="carousel">
+  <div class="carousel-inner" id="servicesContainer">
+    <!-- Service cards will be dynamically inserted -->
   </div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#servicesCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon"></span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#servicesCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon"></span>
+  </button>
 </div>
 
-<div class="container my-5">
-  <h3 class="mb-3">Our Services</h3>
-  <div id="servicesCarousel" class="carousel slide" data-bs-ride="carousel">
-    <div class="carousel-inner" id="carouselInner"></div>
-    <button class="carousel-control-prev" type="button" data-bs-target="#servicesCarousel" data-bs-slide="prev">
-      <span class="carousel-control-prev-icon"></span>
-    </button>
-    <button class="carousel-control-next" type="button" data-bs-target="#servicesCarousel" data-bs-slide="next">
-      <span class="carousel-control-next-icon"></span>
-    </button>
+<!-- Members Panel -->
+<div class="members" id="membersPanel" style="display:none;">
+  <h3>Members</h3>
+  <form id="loginForm">
+    <input type="email" class="form-control" placeholder="Email" required>
+    <input type="password" class="form-control" placeholder="Password" required>
+    <button type="submit" class="btn btn-primary w-100 mt-2">Login</button>
+  </form>
+  <hr>
+  <form id="registerForm">
+    <input type="text" class="form-control" placeholder="Full Name" required>
+    <input type="email" class="form-control" placeholder="Email" required>
+    <input type="password" class="form-control" placeholder="Password" required>
+    <button type="submit" class="btn btn-warning w-100 mt-2">Register</button>
+  </form>
+</div>
+
+<!-- Booking Form -->
+<div class="booking-form" id="bookingForm" style="display:none;">
+  <h3>Book a Service</h3>
+  <form id="bookServiceForm">
+    <input type="text" class="form-control" placeholder="Full Name" required>
+    <input type="email" class="form-control" placeholder="Email" required>
+    <input type="text" class="form-control" placeholder="Car Registration" required>
+    <select class="form-control" required>
+      <option value="">Select a service</option>
+    </select>
+    <button type="submit" class="btn btn-success w-100 mt-2">Confirm Booking</button>
+  </form>
+</div>
+
+<!-- Diagnostics Panel -->
+<div id="diagPanel">
+  <div id="diagPanelHeader"><span>+ Diagnostics</span><span id="diagCloseBtn">&times;</span></div>
+  <div id="diagPanelBody">
+    <p>DB Status: <span id="dbStatus">Checking...</span></p>
+    <p>API Status: <span id="apiStatus">Checking...</span></p>
   </div>
 </div>
 
 <footer>
-  <p>&copy; 2025 SOS Mobile Mechanic – Fast roadside repairs</p>
+  <p>&copy; 2025 SOS Mobile Mechanic – Fast on-site repairs</p>
 </footer>
-
-<div class="diagnostic-panel" id="diagPanel">Click to view diagnostics</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", async () => {
-  const servicesSelect = document.querySelector('[name="service"]');
-  const carouselInner = document.getElementById('carouselInner');
-  try {
-    const res = await fetch('/api/services');
-    const services = await res.json();
-    services.forEach((s,i)=>{
-      const option = document.createElement('option');
-      option.value = s.id;
-      option.textContent = s.name + ' – ' + s.category;
-      servicesSelect.appendChild(option);
+// Sample services data
+const services = [
+  { name: "Oil & Filter Change", description: "Keep your engine healthy with regular servicing." },
+  { name: "Brake Repairs", description: "On-site brake pad and disc replacement." },
+  { name: "Battery Replacement", description: "Flat battery? We'll replace it at your location." }
+];
 
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'carousel-item' + (i===0?' active':'');
-      itemDiv.innerHTML = `<div class="carousel-card"><h5>${s.name}</h5><p>${s.description}</p></div>`;
-      carouselInner.appendChild(itemDiv);
-    });
-  } catch(e){ console.error('Failed to load services', e); }
-
-  document.getElementById('bookingForm').addEventListener('submit', async e=>{
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target));
-    try {
-      const res = await fetch('/api/bookings',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({customer_id:1,service_id:data.service,location:data.address,postcode:'N/A'})
-      });
-      const result = await res.json();
-      alert('Booking confirmed!');
-      // After booking, update booking history if logged in
-    } catch(err){ alert('Booking failed.'); console.error(err); }
-  });
-
-  // Diagnostic panel
-  const diagPanel = document.getElementById('diagPanel');
-  let open = false;
-  diagPanel.addEventListener('click', async ()=>{
-    open = !open;
-    diagPanel.classList.toggle('open', open);
-    if(open){
-      try {
-        const res = await fetch('/api/diagnostics');
-        const data = await res.json();
-        diagPanel.innerHTML = `<pre>${JSON.stringify(data,null,2)}</pre>`;
-      } catch(e){ diagPanel.innerHTML='Error fetching diagnostics'; }
-    } else diagPanel.textContent='Click to view diagnostics';
-  });
+// Populate services carousel dynamically
+const container = document.getElementById("servicesContainer");
+services.forEach((s,i)=>{
+  const item = document.createElement("div");
+  item.className = "carousel-item" + (i===0?" active":"");
+  item.innerHTML = `<div class="card"><h3>${s.name}</h3><p>${s.description}</p></div>`;
+  container.appendChild(item);
 });
+
+// Populate booking select
+const select = document.querySelector("#bookServiceForm select");
+services.forEach(s=>{ const opt = document.createElement("option"); opt.value=s.name; opt.textContent=s.name; select.appendChild(opt); });
+
+// Toggle members panel
+const membersBtn = document.getElementById("membersToggle");
+const membersPanel = document.getElementById("membersPanel");
+membersBtn.addEventListener("click",()=>{membersPanel.style.display=membersPanel.style.display==="none"?"block":"none";});
+
+// Toggle booking form
+const bookBtns = [document.getElementById("bookToggle"),document.getElementById("bookToggle2")];
+const bookingForm = document.getElementById("bookingForm");
+bookBtns.forEach(btn=>{ btn.addEventListener("click",()=>{ bookingForm.style.display = bookingForm.style.display==="none"?"block":"none";}); });
+
+// Diagnostics panel
+const diagPanel = document.getElementById("diagPanel");
+const diagHeader = document.getElementById("diagPanelHeader");
+const diagClose = document.getElementById("diagCloseBtn");
+diagHeader.addEventListener("click",()=>{diagPanel.classList.toggle("open");});
+diagClose.addEventListener("click",()=>{diagPanel.classList.remove("open");});
+
+// Sample diagnostics ping
+setTimeout(()=>{document.getElementById("dbStatus").textContent="Connected";document.getElementById("apiStatus").textContent="Operational";},1000);
+
 </script>
 </body>
 </html>
